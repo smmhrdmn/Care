@@ -1,0 +1,3074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Care</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @font-face {
+      font-family: 'Open Runde';
+      src: url('fonts/OpenRunde-Regular.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Open Runde';
+      src: url('fonts/OpenRunde-Medium.woff2') format('woff2');
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Open Runde';
+      src: url('fonts/OpenRunde-Semibold.woff2') format('woff2');
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Open Runde';
+      src: url('fonts/OpenRunde-Bold.woff2') format('woff2');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    body { font-family: 'Open Runde', system-ui, sans-serif; }
+    .tabular { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body class="bg-neutral-50 text-neutral-900 min-h-dvh">
+
+<script>
+// Default targets (editable via UI)
+const DEFAULT_TARGETS = {
+  cal: [2200, 2400],
+  protein: [180, 200],
+  carbs: [180, 200],
+  fat: [60, 70]
+};
+
+// User profile defaults
+const DEFAULT_PROFILE = {
+  height: "5'10.5\"",
+  startingWeight: 180,
+  targetWeight: [165, 170],
+  weightHistory: [], // [{date: "2026-01-08", weight: 180}, ...]
+  goal: "Body Recomposition (fat loss + muscle gain)"
+};
+
+// Load from localStorage or start fresh
+function loadData() {
+  const saved = localStorage.getItem('careData');
+  if (saved) {
+    return JSON.parse(saved);
+  }
+  return { days: [], targets: DEFAULT_TARGETS, profile: DEFAULT_PROFILE };
+}
+
+function saveData() {
+  localStorage.setItem('careData', JSON.stringify(DATA));
+}
+
+let DATA = loadData();
+// Ensure profile exists for older data
+if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
+</script>
+
+<div id="app" class="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-20 sm:pb-8">
+  <!-- Header -->
+  <header class="flex items-center justify-between gap-2 mb-10 sm:mb-16">
+    <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+      <h1 class="text-lg sm:text-2xl font-semibold shrink-0">Care</h1>
+      <nav id="date-nav" class="hidden sm:flex items-center"></nav>
+    </div>
+    <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+      <button onclick="openModal()" class="size-9 sm:size-8 flex items-center justify-center rounded-xl sm:rounded-lg bg-neutral-900 text-white" aria-label="Import">
+        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      </button>
+      <button onclick="openProfileModal()" class="size-9 sm:size-8 flex items-center justify-center rounded-xl sm:rounded-lg border border-neutral-200 text-neutral-500" aria-label="Profile">
+        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      </button>
+      <button onclick="exportData()" class="size-9 sm:size-8 flex items-center justify-center rounded-xl sm:rounded-lg border border-neutral-200 text-neutral-500" aria-label="Export">
+        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main id="dashboard" class="space-y-6"></main>
+</div>
+
+<!-- Mobile FAB Nav -->
+<div id="mobile-nav" class="sm:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
+  <nav id="date-nav-mobile" class="flex items-center bg-white rounded-full shadow-lg border border-neutral-200 px-1"></nav>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/50" onclick="closeModal()"></div>
+  <div class="absolute inset-x-2 sm:inset-x-4 top-[8%] sm:top-[5%] max-w-md sm:max-w-lg mx-auto bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden max-h-[85vh] sm:max-h-[90vh] flex flex-col">
+    <div class="px-3 sm:px-6 py-3 sm:py-4 border-b border-neutral-200 flex items-center justify-between">
+      <h2 class="text-base sm:text-lg font-semibold">Data</h2>
+      <button onclick="closeModal()" class="size-7 sm:size-8 flex items-center justify-center text-neutral-400 hover:text-neutral-600 rounded-lg" aria-label="Close">
+        <svg class="size-4 sm:size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mx-3 sm:mx-6 mt-3 sm:mt-4 flex gap-0.5 bg-neutral-100 rounded-lg sm:rounded-xl p-0.5 sm:p-1">
+      <button onclick="switchModalTab('import')" id="tab-import" class="flex-1 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded transition-colors bg-white text-neutral-900 shadow-sm">
+        Import
+      </button>
+      <button onclick="switchModalTab('manage')" id="tab-manage" class="flex-1 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded transition-colors text-neutral-500">
+        Manage
+      </button>
+    </div>
+
+    <!-- Import Tab -->
+    <div id="modal-import" class="p-3 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto">
+      <p class="text-xs sm:text-sm text-neutral-500">
+        Days are matched by date — new dates are added, existing dates are updated.
+      </p>
+
+      <!-- File picker -->
+      <label class="flex items-center justify-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 border-2 border-dashed border-neutral-300 rounded-lg sm:rounded-xl cursor-pointer hover:border-neutral-400 hover:bg-neutral-50">
+        <svg class="size-4 sm:size-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        <span class="text-xs sm:text-sm text-neutral-600">Choose file</span>
+        <input type="file" accept=".json,application/json" class="hidden" onchange="loadFile(event)">
+      </label>
+
+      <div class="flex items-center gap-2 text-xs sm:text-sm text-neutral-400">
+        <div class="flex-1 h-px bg-neutral-200"></div>
+        <span>or paste</span>
+        <div class="flex-1 h-px bg-neutral-200"></div>
+      </div>
+
+      <!-- Import name -->
+      <input
+        type="text"
+        id="import-name"
+        class="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-neutral-50 border border-neutral-200 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900"
+        placeholder="Name (optional)"
+      >
+
+      <!-- Textarea -->
+      <textarea
+        id="json-input"
+        class="w-full h-28 sm:h-40 p-2.5 sm:p-4 text-xs sm:text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-lg sm:rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-neutral-900"
+        placeholder='{ "weeks": [...] }'
+      ></textarea>
+      <p id="json-error" class="text-xs sm:text-sm text-red-600 hidden"></p>
+    </div>
+
+    <!-- Manage Imports Tab -->
+    <div id="modal-manage" class="p-3 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto hidden">
+      <p class="text-xs sm:text-sm text-neutral-500">
+        Deleting an import removes all its days.
+      </p>
+      <div id="imports-list" class="space-y-2">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <div class="px-3 sm:px-6 py-3 sm:py-4 border-t border-neutral-200 flex justify-end gap-2 sm:gap-3 mt-auto">
+      <button onclick="closeModal()" class="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-neutral-600">
+        Cancel
+      </button>
+      <button id="import-btn" onclick="addDay()" class="px-4 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium bg-neutral-900 text-white rounded-lg sm:rounded-xl">
+        Import
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Profile Modal -->
+<div id="profile-modal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/50" onclick="closeProfileModal()"></div>
+  <div class="absolute inset-x-2 sm:inset-x-4 top-[8%] sm:top-[5%] bottom-[8%] sm:bottom-[5%] max-w-md sm:max-w-lg mx-auto bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden flex flex-col">
+    <div class="px-3 sm:px-6 py-3 sm:py-4 border-b border-neutral-200 flex items-center justify-between shrink-0">
+      <h2 class="text-base sm:text-lg font-semibold">Profile</h2>
+      <button onclick="closeProfileModal()" class="size-7 sm:size-8 flex items-center justify-center text-neutral-400 hover:text-neutral-600 rounded-lg" aria-label="Close">
+        <svg class="size-4 sm:size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="p-3 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto flex-1">
+      <!-- Physical Stats -->
+      <section>
+        <h3 class="text-xs sm:text-sm font-medium text-neutral-500 mb-2 sm:mb-3">Physical Stats</h3>
+        <div class="grid grid-cols-3 gap-1.5 sm:gap-3">
+          <div class="bg-neutral-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
+            <div class="text-[10px] sm:text-xs text-neutral-500 mb-0.5 sm:mb-1">Height</div>
+            <div id="profile-height" class="text-sm sm:text-lg font-semibold tabular">5'10.5"</div>
+          </div>
+          <div class="bg-neutral-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
+            <div class="text-[10px] sm:text-xs text-neutral-500 mb-0.5 sm:mb-1">Starting</div>
+            <div id="profile-starting-weight" class="text-sm sm:text-lg font-semibold tabular">180 lb</div>
+          </div>
+          <div class="bg-neutral-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
+            <div class="text-[10px] sm:text-xs text-neutral-500 mb-0.5 sm:mb-1">Target</div>
+            <div id="profile-target-weight" class="text-sm sm:text-lg font-semibold tabular">165–170</div>
+          </div>
+        </div>
+
+        <!-- Weight Trend Chart -->
+        <div class="mt-2 sm:mt-3 bg-neutral-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
+          <div class="flex items-center justify-between mb-2 sm:mb-3">
+            <div>
+              <div class="text-[10px] sm:text-xs text-neutral-500 mb-0.5">Current</div>
+              <div class="flex items-baseline gap-1 sm:gap-2">
+                <span id="profile-current-weight" class="text-xl sm:text-2xl font-semibold tabular">180</span>
+                <span class="text-xs sm:text-sm text-neutral-400">lb</span>
+                <span id="profile-weight-change" class="text-xs sm:text-sm font-medium text-neutral-400">—</span>
+              </div>
+            </div>
+            <div id="profile-weight-trend" class="text-right">
+              <div class="text-[10px] sm:text-xs text-neutral-400">to goal</div>
+              <div id="profile-weight-to-goal" class="text-xs sm:text-sm font-medium tabular text-neutral-500">10–15 lb</div>
+            </div>
+          </div>
+          <div id="profile-weight-chart-container" class="h-24 sm:h-28">
+            <canvas id="profile-weight-chart"></canvas>
+          </div>
+          <div id="profile-weight-empty" class="hidden text-[10px] sm:text-xs text-neutral-400 text-center py-6 sm:py-8">
+            No weigh-ins yet.
+          </div>
+        </div>
+
+        <div class="mt-2 sm:mt-3 bg-neutral-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
+          <div class="text-[10px] sm:text-xs text-neutral-500 mb-0.5 sm:mb-1">Goal</div>
+          <div id="profile-goal" class="text-xs sm:text-sm font-medium">Body Recomposition</div>
+        </div>
+      </section>
+
+      <!-- Nutrition Goals -->
+      <section>
+        <h3 class="text-xs sm:text-sm font-medium text-neutral-500 mb-2 sm:mb-3">Daily Targets</h3>
+        <div class="grid grid-cols-2 gap-1.5 sm:gap-3">
+          <div class="bg-orange-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
+            <div class="text-[10px] sm:text-xs text-orange-600 mb-0.5">Calories</div>
+            <div id="profile-cal" class="text-sm sm:text-lg font-semibold tabular text-orange-700">2,200–2,400</div>
+          </div>
+          <div class="bg-red-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
+            <div class="text-[10px] sm:text-xs text-red-600 mb-0.5">Protein</div>
+            <div id="profile-protein" class="text-sm sm:text-lg font-semibold tabular text-red-700">180–200g</div>
+          </div>
+          <div class="bg-amber-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
+            <div class="text-[10px] sm:text-xs text-amber-600 mb-0.5">Carbs</div>
+            <div id="profile-carbs" class="text-sm sm:text-lg font-semibold tabular text-amber-700">180–200g</div>
+          </div>
+          <div class="bg-sky-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
+            <div class="text-[10px] sm:text-xs text-sky-600 mb-0.5">Fat</div>
+            <div id="profile-fat" class="text-sm sm:text-lg font-semibold tabular text-sky-700">60–70g</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Workout Goals -->
+      <section>
+        <h3 class="text-xs sm:text-sm font-medium text-neutral-500 mb-2 sm:mb-3">Workout Goals</h3>
+        <div class="space-y-1.5 sm:space-y-3">
+          <div class="bg-emerald-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
+            <div class="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+              <svg class="size-3 sm:size-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+              </svg>
+              <div class="text-xs sm:text-sm font-medium text-emerald-700">Progressive Overload</div>
+            </div>
+            <div class="text-[10px] sm:text-xs text-emerald-600">Increase volume weekly</div>
+          </div>
+          <div class="bg-sky-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
+            <div class="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+              <svg class="size-3 sm:size-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+              <div class="text-xs sm:text-sm font-medium text-sky-700">Cardio</div>
+            </div>
+            <div class="text-[10px] sm:text-xs text-sky-600">Increase distance, maintain pace</div>
+          </div>
+          <div class="bg-violet-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
+            <div class="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+              <svg class="size-3 sm:size-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>
+              </svg>
+              <div class="text-xs sm:text-sm font-medium text-violet-700">Balance</div>
+            </div>
+            <div class="text-[10px] sm:text-xs text-violet-600">Push/pull balance, don't skip legs</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tips - hidden on mobile -->
+      <section class="hidden sm:block border-t border-neutral-100 pt-5">
+        <h3 class="text-sm font-medium text-neutral-500 mb-3">Recomp Tips</h3>
+        <ul class="text-xs text-neutral-500 space-y-2">
+          <li class="flex gap-2">
+            <span class="text-neutral-400">•</span>
+            Hit protein target daily to preserve/build muscle
+          </li>
+          <li class="flex gap-2">
+            <span class="text-neutral-400">•</span>
+            Moderate calorie deficit (200-400 below maintenance)
+          </li>
+          <li class="flex gap-2">
+            <span class="text-neutral-400">•</span>
+            Progressive overload signals body to keep muscle
+          </li>
+          <li class="flex gap-2">
+            <span class="text-neutral-400">•</span>
+            Sleep and recovery are essential for recomp
+          </li>
+        </ul>
+      </section>
+    </div>
+    <div class="px-3 sm:px-6 py-3 sm:py-4 border-t border-neutral-200 shrink-0">
+      <button onclick="closeProfileModal()" class="w-full px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium bg-neutral-900 text-white rounded-lg sm:rounded-xl">
+        Done
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const COLORS = {
+    cal: { bg: 'bg-orange-100', text: 'text-orange-700', bar: 'bg-orange-500' },
+    protein: { bg: 'bg-red-100', text: 'text-red-700', bar: 'bg-red-500' },
+    carbs: { bg: 'bg-amber-100', text: 'text-amber-700', bar: 'bg-amber-500' },
+    fat: { bg: 'bg-sky-100', text: 'text-sky-700', bar: 'bg-sky-500' }
+  };
+
+  // Muscle group mapping for exercises
+  const EXERCISE_MUSCLE_MAP = {
+    // Push (Chest, Shoulders, Triceps)
+    'machine chest press': { group: 'push', muscles: ['chest'] },
+    'chest press': { group: 'push', muscles: ['chest'] },
+    'machine shoulder press': { group: 'push', muscles: ['shoulders'] },
+    'shoulder press': { group: 'push', muscles: ['shoulders'] },
+    'tricep pushdown': { group: 'push', muscles: ['triceps'] },
+    'chest fly': { group: 'push', muscles: ['chest'] },
+    'dips': { group: 'push', muscles: ['chest', 'triceps'] },
+
+    // Pull (Back, Biceps)
+    'lat pulldown': { group: 'pull', muscles: ['back', 'biceps'] },
+    'assisted pullups': { group: 'pull', muscles: ['back', 'biceps'] },
+    'pullups': { group: 'pull', muscles: ['back', 'biceps'] },
+    'cable row': { group: 'pull', muscles: ['back'] },
+    'dumbbell curls': { group: 'pull', muscles: ['biceps'] },
+    'reverse fly': { group: 'pull', muscles: ['back', 'shoulders'] },
+    'barbell row': { group: 'pull', muscles: ['back'] },
+
+    // Legs
+    'leg press': { group: 'legs', muscles: ['quads', 'glutes'] },
+    'goblet squat': { group: 'legs', muscles: ['quads', 'glutes'] },
+    'squat': { group: 'legs', muscles: ['quads', 'glutes'] },
+    'lunges': { group: 'legs', muscles: ['quads', 'glutes'] },
+    'leg curl': { group: 'legs', muscles: ['hamstrings'] },
+    'leg extension': { group: 'legs', muscles: ['quads'] },
+    'calf raise': { group: 'legs', muscles: ['calves'] },
+
+    // Core
+    'machine crunch': { group: 'core', muscles: ['abs'] },
+    'plank': { group: 'core', muscles: ['abs', 'core'] },
+    'back extension': { group: 'core', muscles: ['lower back'] },
+    'deadlift': { group: 'core', muscles: ['lower back', 'hamstrings', 'glutes'] },
+
+    // Cardio
+    'cycling': { group: 'cardio', muscles: ['cardio'] },
+    'running': { group: 'cardio', muscles: ['cardio'] },
+    'walking': { group: 'cardio', muscles: ['cardio'] },
+    'sledding': { group: 'cardio', muscles: ['cardio'] },
+  };
+
+  const MUSCLE_GROUP_COLORS = {
+    push: { bg: 'bg-rose-500', text: 'text-rose-600', light: 'bg-rose-100' },
+    pull: { bg: 'bg-violet-500', text: 'text-violet-600', light: 'bg-violet-100' },
+    legs: { bg: 'bg-emerald-500', text: 'text-emerald-600', light: 'bg-emerald-100' },
+    core: { bg: 'bg-amber-500', text: 'text-amber-600', light: 'bg-amber-100' },
+    cardio: { bg: 'bg-sky-500', text: 'text-sky-600', light: 'bg-sky-100' },
+  };
+
+  function getExerciseMuscleGroup(exerciseName) {
+    const normalized = exerciseName.toLowerCase().trim();
+    return EXERCISE_MUSCLE_MAP[normalized] || { group: 'other', muscles: ['unknown'] };
+  }
+
+  function analyzeWorkouts(days) {
+    const workoutDays = days.filter(d => d.workout?.exercises);
+    if (!workoutDays.length) return null;
+
+    const volumeByGroup = { push: 0, pull: 0, legs: 0, core: 0, cardio: 0 };
+    const exerciseStats = {};
+    const prs = [];
+    const volumeOverTime = [];
+
+    for (const day of workoutDays) {
+      let dayVolume = 0;
+      const dayGroupVolume = { push: 0, pull: 0, legs: 0, core: 0, cardio: 0 };
+
+      for (const ex of day.workout.exercises) {
+        const { group } = getExerciseMuscleGroup(ex.name);
+
+        // Calculate volume (weight × reps × sets) or cardio calories
+        let volume = 0;
+        if (ex.weight && ex.reps && ex.sets) {
+          volume = ex.weight * ex.reps * ex.sets;
+        } else if (ex.assistWeight && ex.reps && ex.sets) {
+          // For assisted exercises, use a proxy (bodyweight - assist)
+          volume = (180 - ex.assistWeight) * ex.reps * ex.sets;
+        } else if (ex.calories) {
+          volume = ex.calories; // Cardio uses calories as "volume"
+        } else if (ex.duration && ex.sets) {
+          volume = ex.duration * ex.sets * 10; // Core exercises
+        }
+
+        volumeByGroup[group] = (volumeByGroup[group] || 0) + volume;
+        dayGroupVolume[group] = (dayGroupVolume[group] || 0) + volume;
+        dayVolume += volume;
+
+        // Track exercise stats
+        const exName = ex.name;
+        if (!exerciseStats[exName]) {
+          exerciseStats[exName] = {
+            name: exName,
+            group,
+            history: [],
+            bestWeight: null,
+            bestReps: null,
+            trend: 'stable'
+          };
+        }
+
+        const stat = exerciseStats[exName];
+        const entry = { date: day.date, pr: ex.pr };
+
+        if (ex.weight) {
+          entry.weight = ex.weight;
+          entry.reps = ex.reps;
+          if (!stat.bestWeight || ex.weight > stat.bestWeight) {
+            stat.bestWeight = ex.weight;
+          }
+        } else if (ex.assistWeight !== undefined) {
+          entry.assistWeight = ex.assistWeight;
+          entry.reps = ex.reps;
+          if (!stat.bestWeight || ex.assistWeight < stat.bestWeight) {
+            stat.bestWeight = ex.assistWeight; // Lower assist = stronger
+          }
+        } else if (ex.distance) {
+          entry.distance = ex.distance;
+          if (!stat.bestDistance || ex.distance > stat.bestDistance) {
+            stat.bestDistance = ex.distance;
+          }
+        }
+
+        stat.history.push(entry);
+
+        // Collect PRs
+        if (ex.pr) {
+          prs.push({
+            name: ex.name,
+            date: day.date,
+            value: ex.weight ? `${ex.weight}lb` : ex.assistWeight !== undefined ? `-${ex.assistWeight}lb assist` : ex.distance ? `${ex.distance}mi` : ''
+          });
+        }
+      }
+
+      volumeOverTime.push({
+        date: day.date,
+        total: dayVolume,
+        ...dayGroupVolume
+      });
+    }
+
+    // Calculate trends for each exercise
+    for (const stat of Object.values(exerciseStats)) {
+      if (stat.history.length >= 2) {
+        const first = stat.history[0];
+        const last = stat.history[stat.history.length - 1];
+
+        if (first.weight && last.weight) {
+          if (last.weight > first.weight) stat.trend = 'up';
+          else if (last.weight < first.weight) stat.trend = 'down';
+        } else if (first.assistWeight !== undefined && last.assistWeight !== undefined) {
+          if (last.assistWeight < first.assistWeight) stat.trend = 'up'; // Less assist = better
+          else if (last.assistWeight > first.assistWeight) stat.trend = 'down';
+        } else if (first.distance && last.distance) {
+          if (last.distance > first.distance) stat.trend = 'up';
+          else if (last.distance < first.distance) stat.trend = 'down';
+        }
+      }
+    }
+
+    // Calculate push/pull ratio
+    const pushPullRatio = volumeByGroup.pull > 0
+      ? (volumeByGroup.push / volumeByGroup.pull).toFixed(2)
+      : 'N/A';
+
+    const upperVolume = volumeByGroup.push + volumeByGroup.pull;
+    const lowerVolume = volumeByGroup.legs;
+    const upperLowerRatio = lowerVolume > 0
+      ? (upperVolume / lowerVolume).toFixed(2)
+      : 'N/A';
+
+    return {
+      volumeByGroup,
+      exerciseStats,
+      prs,
+      volumeOverTime,
+      pushPullRatio,
+      upperLowerRatio,
+      totalWorkouts: workoutDays.length
+    };
+  }
+
+  function analyzeDetailedMuscles(days) {
+    const workoutDays = days.filter(d => d.workout?.exercises);
+    if (!workoutDays.length) return null;
+
+    const muscleVolume = {};
+
+    for (const day of workoutDays) {
+      for (const ex of day.workout.exercises) {
+        const { muscles } = getExerciseMuscleGroup(ex.name);
+
+        let volume = 0;
+        if (ex.weight && ex.reps && ex.sets) {
+          volume = ex.weight * ex.reps * ex.sets;
+        } else if (ex.assistWeight !== undefined && ex.reps && ex.sets) {
+          volume = (180 - ex.assistWeight) * ex.reps * ex.sets;
+        } else if (ex.calories) {
+          volume = ex.calories;
+        } else if (ex.duration && ex.sets) {
+          volume = ex.duration * ex.sets * 10;
+        }
+
+        // Split volume across muscles
+        const volumePerMuscle = volume / muscles.length;
+        for (const muscle of muscles) {
+          muscleVolume[muscle] = (muscleVolume[muscle] || 0) + volumePerMuscle;
+        }
+      }
+    }
+
+    return muscleVolume;
+  }
+
+  function getVolumeAndCardioTrends(days) {
+    // Group by week
+    const weeklyData = {};
+
+    for (const day of days) {
+      const weekKey = day._week !== undefined ? day._week : getISOWeek(day.date);
+      if (!weeklyData[weekKey]) {
+        weeklyData[weekKey] = { volume: 0, cardioCalories: 0, cardioDistance: 0, cardioDuration: 0, workouts: 0 };
+      }
+
+      if (day.workout) {
+        weeklyData[weekKey].workouts++;
+        if (day.workout.volume) {
+          weeklyData[weekKey].volume += day.workout.volume;
+        }
+        if (day.workout.exercises) {
+          for (const ex of day.workout.exercises) {
+            if (ex.calories) weeklyData[weekKey].cardioCalories += ex.calories;
+            if (ex.distance) {
+              weeklyData[weekKey].cardioDistance += ex.distance;
+              if (ex.duration) weeklyData[weekKey].cardioDuration += ex.duration;
+            }
+          }
+        }
+      }
+    }
+
+    const weeks = Object.entries(weeklyData).sort((a, b) => a[0] - b[0]);
+
+    // Calculate trends
+    let volumeTrend = 'stable';
+    let cardioTrend = 'stable';
+
+    if (weeks.length >= 2) {
+      const first = weeks[0][1];
+      const last = weeks[weeks.length - 1][1];
+
+      if (last.volume > first.volume * 1.05) volumeTrend = 'up';
+      else if (last.volume < first.volume * 0.95) volumeTrend = 'down';
+
+      if (last.cardioDistance > first.cardioDistance * 1.05) cardioTrend = 'up';
+      else if (last.cardioDistance < first.cardioDistance * 0.95) cardioTrend = 'down';
+    }
+
+    return { weeks, volumeTrend, cardioTrend };
+  }
+
+  function renderWorkoutAnalysis(days, view = 'month') {
+    const analysis = analyzeWorkouts(days);
+    if (!analysis) return '';
+
+    const { volumeByGroup, exerciseStats, prs, pushPullRatio, upperLowerRatio, totalWorkouts, volumeOverTime } = analysis;
+    const detailedMuscles = analyzeDetailedMuscles(days);
+    const trends = getVolumeAndCardioTrends(days);
+
+    // Calculate total volume for percentages
+    const totalVolume = Object.values(volumeByGroup).reduce((a, b) => a + b, 0);
+    const totalMuscleVolume = Object.values(detailedMuscles || {}).reduce((a, b) => a + b, 0);
+
+    // Sort exercises by most recent
+    const sortedExercises = Object.values(exerciseStats)
+      .filter(e => e.group !== 'cardio')
+      .sort((a, b) => {
+        const aDate = a.history[a.history.length - 1]?.date || '';
+        const bDate = b.history[b.history.length - 1]?.date || '';
+        return bDate.localeCompare(aDate);
+      });
+
+    const trendIcon = (trend) => {
+      if (trend === 'up') return '<span class="text-green-500">↑</span>';
+      if (trend === 'down') return '<span class="text-red-500">↓</span>';
+      return '<span class="text-neutral-400">→</span>';
+    };
+
+    // Balance analysis with context
+    const pushPullNum = parseFloat(pushPullRatio);
+    const upperLowerNum = parseFloat(upperLowerRatio);
+
+    let pushPullStatus, pushPullAdvice;
+    if (isNaN(pushPullNum)) {
+      pushPullStatus = 'neutral';
+      pushPullAdvice = 'Need more data';
+    } else if (pushPullNum >= 0.8 && pushPullNum <= 1.2) {
+      pushPullStatus = 'good';
+      pushPullAdvice = 'Well balanced';
+    } else if (pushPullNum < 0.8) {
+      pushPullStatus = 'warn';
+      pushPullAdvice = 'Add more push work';
+    } else {
+      pushPullStatus = 'warn';
+      pushPullAdvice = 'Add more pull work';
+    }
+
+    let upperLowerStatus, upperLowerAdvice;
+    if (isNaN(upperLowerNum)) {
+      upperLowerStatus = 'neutral';
+      upperLowerAdvice = 'Need more data';
+    } else if (upperLowerNum <= 2) {
+      upperLowerStatus = 'good';
+      upperLowerAdvice = 'Good leg volume';
+    } else {
+      upperLowerStatus = 'warn';
+      upperLowerAdvice = 'Add more leg work';
+    }
+
+    // Muscle groups for detailed view
+    const muscleGroups = [
+      { key: 'chest', label: 'Chest', color: 'bg-rose-500' },
+      { key: 'shoulders', label: 'Shoulders', color: 'bg-rose-400' },
+      { key: 'triceps', label: 'Triceps', color: 'bg-rose-300' },
+      { key: 'back', label: 'Back', color: 'bg-violet-500' },
+      { key: 'biceps', label: 'Biceps', color: 'bg-violet-400' },
+      { key: 'quads', label: 'Quads', color: 'bg-emerald-500' },
+      { key: 'glutes', label: 'Glutes', color: 'bg-emerald-400' },
+      { key: 'hamstrings', label: 'Hamstrings', color: 'bg-emerald-300' },
+      { key: 'abs', label: 'Abs', color: 'bg-amber-500' },
+      { key: 'lower back', label: 'Lower Back', color: 'bg-amber-400' },
+    ];
+
+    const maxMuscleVol = Math.max(...muscleGroups.map(m => detailedMuscles?.[m.key] || 0));
+
+    // Volume trend data
+    const weekLabels = trends.weeks.map(([w]) => `W${w}`);
+    const volumeData = trends.weeks.map(([, d]) => d.volume);
+    const cardioData = trends.weeks.map(([, d]) => d.cardioDistance);
+
+    return `
+      <div class="space-y-6">
+        <!-- Workout Header -->
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold">Workout Analysis</h3>
+          <span class="text-sm text-neutral-500">${totalWorkouts} sessions</span>
+        </div>
+
+        <!-- Progress Trends -->
+        ${trends.weeks.length >= 1 && view === 'week' ? `
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          ${(() => {
+            const latestWeek = trends.weeks[trends.weeks.length - 1];
+            const prevWeek = trends.weeks.length >= 2 ? trends.weeks[trends.weeks.length - 2] : null;
+            const [weekNum, data] = latestWeek;
+            const prevData = prevWeek ? prevWeek[1] : null;
+
+            // Volume card
+            const volValue = data.volume;
+            const volPrev = prevData?.volume || volValue;
+            const volProgress = volPrev > 0 ? Math.min((volValue / volPrev) * 100, 150) : 100;
+            const volTrendIcon = trends.volumeTrend === 'up' ? '↑' : trends.volumeTrend === 'down' ? '↓' : '→';
+            const volTrendColor = trends.volumeTrend === 'up' ? 'text-green-500' : trends.volumeTrend === 'down' ? 'text-neutral-400' : 'text-neutral-400';
+
+            // Cardio distance card
+            const distValue = data.cardioDistance;
+            const distPrev = prevData?.cardioDistance || distValue;
+            const distProgress = distPrev > 0 ? Math.min((distValue / distPrev) * 100, 150) : 100;
+            const distTrendIcon = trends.cardioTrend === 'up' ? '↑' : trends.cardioTrend === 'down' ? '↓' : '→';
+            const distTrendColor = trends.cardioTrend === 'up' ? 'text-green-500' : trends.cardioTrend === 'down' ? 'text-neutral-400' : 'text-neutral-400';
+
+            // Cardio duration card
+            const durValue = data.cardioDuration;
+            const durPrev = prevData?.cardioDuration || durValue;
+            const durProgress = durPrev > 0 ? Math.min((durValue / durPrev) * 100, 150) : 100;
+
+            // Pace card
+            const paceValue = distValue > 0 && durValue > 0 ? (durValue / distValue) : 0;
+            const pacePrev = distPrev > 0 && durPrev > 0 ? (durPrev / distPrev) : paceValue;
+            const paceImproved = paceValue < pacePrev;
+            const paceProgress = pacePrev > 0 ? Math.min((pacePrev / paceValue) * 100, 150) : 100;
+
+            return `
+              <div class="bg-white rounded-2xl p-4 border border-neutral-200">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-sm font-medium text-violet-600">Volume</span>
+                  <span class="text-sm ${volTrendColor}">${volTrendIcon}</span>
+                </div>
+                <div class="text-2xl font-semibold tabular">${(volValue / 1000).toFixed(0)}<span class="text-sm text-neutral-400 font-normal ml-1">k lbs</span></div>
+                <div class="h-2 bg-neutral-100 rounded-full mt-3 overflow-hidden">
+                  <div class="bg-violet-500 h-full rounded-full" style="width: ${Math.min(volProgress, 100)}%"></div>
+                </div>
+              </div>
+              <div class="bg-white rounded-2xl p-4 border border-neutral-200">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-sm font-medium text-sky-600">Distance</span>
+                  <span class="text-sm ${distTrendColor}">${distTrendIcon}</span>
+                </div>
+                <div class="text-2xl font-semibold tabular">${distValue.toFixed(1)}<span class="text-sm text-neutral-400 font-normal ml-1">mi</span></div>
+                <div class="h-2 bg-neutral-100 rounded-full mt-3 overflow-hidden">
+                  <div class="bg-sky-500 h-full rounded-full" style="width: ${Math.min(distProgress, 100)}%"></div>
+                </div>
+              </div>
+              <div class="bg-white rounded-2xl p-4 border border-neutral-200">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-sm font-medium text-emerald-600">Duration</span>
+                  <span class="text-sm text-neutral-400">W${weekNum}</span>
+                </div>
+                <div class="text-2xl font-semibold tabular">${durValue}<span class="text-sm text-neutral-400 font-normal ml-1">min</span></div>
+                <div class="h-2 bg-neutral-100 rounded-full mt-3 overflow-hidden">
+                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(durProgress, 100)}%"></div>
+                </div>
+              </div>
+              <div class="bg-white rounded-2xl p-4 border border-neutral-200">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-sm font-medium text-amber-600">Pace</span>
+                  <span class="text-sm ${paceImproved ? 'text-green-500' : 'text-neutral-400'}">${paceImproved ? '↑' : '→'}</span>
+                </div>
+                <div class="text-2xl font-semibold tabular">${paceValue.toFixed(1)}<span class="text-sm text-neutral-400 font-normal ml-1">min/mi</span></div>
+                <div class="h-2 bg-neutral-100 rounded-full mt-3 overflow-hidden">
+                  <div class="bg-amber-500 h-full rounded-full" style="width: ${Math.min(paceProgress, 100)}%"></div>
+                </div>
+              </div>
+            `;
+          })()}
+        </section>
+        ` : ''}
+
+        ${trends.weeks.length >= 1 && view === 'month' ? `
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 p-3 sm:p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h4 class="text-sm font-medium text-neutral-500">Weekly Volume</h4>
+              ${trends.weeks.length >= 2 ? `
+              <div class="flex items-center gap-1 text-sm ${trends.volumeTrend === 'up' ? 'text-green-600' : trends.volumeTrend === 'down' ? 'text-red-500' : 'text-neutral-500'}">
+                ${trendIcon(trends.volumeTrend)}
+                <span>${trends.volumeTrend === 'up' ? 'Increasing' : trends.volumeTrend === 'down' ? 'Decreasing' : 'Stable'}</span>
+              </div>
+              ` : ''}
+            </div>
+            <div class="flex items-end gap-2" style="height: 96px;">
+              ${trends.weeks.map(([w, d]) => {
+                const maxVol = Math.max(...trends.weeks.map(([,x]) => x.volume), 1);
+                const pct = maxVol > 0 ? (d.volume / maxVol * 100) : 0;
+                const heightPx = Math.max(Math.round(56 * pct / 100), 4);
+                return `
+                  <div class="flex-1 flex flex-col items-center justify-end gap-1">
+                    <div class="text-[10px] tabular font-medium text-neutral-600">${(d.volume / 1000).toFixed(0)}k</div>
+                    <div class="w-full bg-violet-500 rounded-t-lg" style="height: ${heightPx}px;"></div>
+                    <span class="text-[10px] text-neutral-400">W${w}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 p-3 sm:p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h4 class="text-sm font-medium text-neutral-500">Cardio</h4>
+              ${trends.weeks.length >= 2 ? `
+              <div class="flex items-center gap-1 text-sm ${trends.cardioTrend === 'up' ? 'text-green-600' : trends.cardioTrend === 'down' ? 'text-red-500' : 'text-neutral-500'}">
+                ${trendIcon(trends.cardioTrend)}
+                <span>${trends.cardioTrend === 'up' ? 'Improving' : trends.cardioTrend === 'down' ? 'Declining' : 'Stable'}</span>
+              </div>
+              ` : ''}
+            </div>
+            <div class="flex items-end gap-2" style="height: 96px;">
+              ${trends.weeks.map(([w, d]) => {
+                const maxDist = Math.max(...trends.weeks.map(([,x]) => x.cardioDistance), 0.1);
+                const pct = maxDist > 0 ? (d.cardioDistance / maxDist * 100) : 0;
+                const heightPx = Math.max(Math.round(56 * pct / 100), 4);
+                return `
+                  <div class="flex-1 flex flex-col items-center justify-end gap-1">
+                    <div class="text-[10px] tabular font-medium text-neutral-600">${d.cardioDistance.toFixed(1)}m</div>
+                    <div class="w-full bg-sky-500 rounded-t-lg" style="height: ${heightPx}px;"></div>
+                    <span class="text-[10px] text-neutral-400">W${w}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- Balance & Detailed Muscles -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Balance Check -->
+          <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 p-3 sm:p-5">
+            <h4 class="text-sm font-medium text-neutral-500 mb-4">Training Balance</h4>
+
+            <!-- Push vs Pull -->
+            <div class="mb-5">
+              <div class="flex justify-between text-sm mb-2">
+                <span class="text-rose-600 font-medium">Push</span>
+                <span class="text-violet-600 font-medium">Pull</span>
+              </div>
+              <div class="h-3 bg-neutral-100 rounded-full overflow-hidden flex">
+                ${(() => {
+                  const pushVol = volumeByGroup.push || 0;
+                  const pullVol = volumeByGroup.pull || 0;
+                  const total = pushVol + pullVol;
+                  const pushPct = total > 0 ? (pushVol / total * 100) : 50;
+                  return `
+                    <div class="bg-rose-500 h-full" style="width: ${pushPct}%"></div>
+                    <div class="bg-violet-500 h-full" style="width: ${100 - pushPct}%"></div>
+                  `;
+                })()}
+              </div>
+              <div class="flex justify-between mt-2">
+                <span class="text-xs text-neutral-500">${((volumeByGroup.push || 0) / 1000).toFixed(1)}k</span>
+                <span class="text-xs ${pushPullStatus === 'good' ? 'text-green-600' : pushPullStatus === 'warn' ? 'text-amber-600' : 'text-neutral-400'} font-medium">${pushPullAdvice}</span>
+                <span class="text-xs text-neutral-500">${((volumeByGroup.pull || 0) / 1000).toFixed(1)}k</span>
+              </div>
+            </div>
+
+            <!-- Upper vs Lower -->
+            <div>
+              <div class="flex justify-between text-sm mb-2">
+                <span class="text-indigo-600 font-medium">Upper</span>
+                <span class="text-emerald-600 font-medium">Lower</span>
+              </div>
+              <div class="h-3 bg-neutral-100 rounded-full overflow-hidden flex">
+                ${(() => {
+                  const upperVol = (volumeByGroup.push || 0) + (volumeByGroup.pull || 0);
+                  const lowerVol = volumeByGroup.legs || 0;
+                  const total = upperVol + lowerVol;
+                  const upperPct = total > 0 ? (upperVol / total * 100) : 50;
+                  return `
+                    <div class="bg-indigo-500 h-full" style="width: ${upperPct}%"></div>
+                    <div class="bg-emerald-500 h-full" style="width: ${100 - upperPct}%"></div>
+                  `;
+                })()}
+              </div>
+              <div class="flex justify-between mt-2">
+                <span class="text-xs text-neutral-500">${(((volumeByGroup.push || 0) + (volumeByGroup.pull || 0)) / 1000).toFixed(1)}k</span>
+                <span class="text-xs ${upperLowerStatus === 'good' ? 'text-green-600' : upperLowerStatus === 'warn' ? 'text-amber-600' : 'text-neutral-400'} font-medium">${upperLowerAdvice}</span>
+                <span class="text-xs text-neutral-500">${((volumeByGroup.legs || 0) / 1000).toFixed(1)}k</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detailed Muscle Breakdown -->
+          <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 p-3 sm:p-5">
+            <h4 class="text-sm font-medium text-neutral-500 mb-4">Muscles Worked</h4>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+              ${muscleGroups.map(({ key, label, color }) => {
+                const vol = detailedMuscles?.[key] || 0;
+                const pct = maxMuscleVol > 0 ? (vol / maxMuscleVol * 100) : 0;
+                const isLow = pct < 20 && pct > 0;
+                const isZero = vol === 0;
+                return `
+                  <div class="flex items-center gap-2">
+                    <div class="w-16 text-xs ${isZero ? 'text-neutral-300' : isLow ? 'text-amber-600' : 'text-neutral-600'}">${label}</div>
+                    <div class="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
+                      <div class="${color} h-full rounded-full" style="width: ${pct}%"></div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            ${(() => {
+              const missing = muscleGroups.filter(m => !detailedMuscles?.[m.key] || detailedMuscles[m.key] === 0);
+              if (missing.length > 0) {
+                return `<p class="text-xs text-amber-600 mt-4 pt-3 border-t border-neutral-100">
+                  Missing: ${missing.map(m => m.label).join(', ')}
+                </p>`;
+              }
+              return '';
+            })()}
+          </div>
+        </div>
+
+        <!-- Two Column: Exercise Progress + PRs -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Exercise Progress -->
+          <div class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+            <div class="px-5 py-3 border-b border-neutral-100">
+              <h4 class="text-sm font-medium text-neutral-500">Exercise Progress</h4>
+            </div>
+            <div class="divide-y divide-neutral-100 max-h-64 overflow-y-auto">
+              ${sortedExercises.slice(0, 10).map(ex => {
+                const colors = MUSCLE_GROUP_COLORS[ex.group] || MUSCLE_GROUP_COLORS.core;
+                const best = ex.bestWeight !== null
+                  ? (ex.history[0]?.assistWeight !== undefined ? `-${ex.bestWeight}lb` : `${ex.bestWeight}lb`)
+                  : ex.bestDistance ? `${ex.bestDistance}mi` : '-';
+                return `
+                  <div class="px-5 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="size-2 rounded-full ${colors.bg}"></span>
+                      <span class="text-sm">${ex.name}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <span class="text-sm tabular text-neutral-600">${best}</span>
+                      ${trendIcon(ex.trend)}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- Recent PRs -->
+          <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 overflow-hidden">
+            <div class="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-neutral-100">
+              <h4 class="text-xs sm:text-sm font-medium text-neutral-500">Recent PRs</h4>
+            </div>
+            ${prs.length ? `
+              <div class="divide-y divide-neutral-100 max-h-52 sm:max-h-64 overflow-y-auto">
+                ${prs.slice(-10).reverse().map(pr => {
+                  const d = new Date(pr.date + 'T00:00:00');
+                  const dateStr = (d.getMonth() + 1) + '/' + String(d.getDate()).padStart(2, '0');
+                  return `
+                  <div class="px-3 sm:px-5 py-2 sm:py-3 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                      <span class="text-green-500 text-xs sm:text-base">★</span>
+                      <span class="text-xs sm:text-sm truncate">${pr.name}</span>
+                    </div>
+                    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                      <span class="text-xs sm:text-sm font-medium text-green-600 tabular">${pr.value}</span>
+                      <span class="text-xs text-neutral-400 tabular">${dateStr}</span>
+                    </div>
+                  </div>
+                `}).join('')}
+              </div>
+            ` : `
+              <div class="px-3 sm:px-5 py-6 sm:py-8 text-center text-neutral-400 text-xs sm:text-sm">No PRs yet</div>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const LABELS = {
+    cal: 'Calories',
+    protein: 'Protein',
+    carbs: 'Carbs',
+    fat: 'Fat'
+  };
+
+  const UNITS = {
+    cal: '',
+    protein: 'g',
+    carbs: 'g',
+    fat: 'g'
+  };
+
+  let selectedDate = DATA.days[DATA.days.length - 1]?.date || null;
+  let currentView = 'month'; // 'month', 'week', 'day'
+  let selectedWeek = null; // ISO week string like '2026-W03'
+  let selectedMonth = null; // month string like '2026-01'
+
+  function formatDate(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  function getISOWeek(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+    const week1 = new Date(d.getFullYear(), 0, 4);
+    const weekNum = 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+  }
+
+  function getMonth(dateStr) {
+    return dateStr.slice(0, 7); // '2026-01'
+  }
+
+  function formatWeek(weekStr) {
+    const [year, w] = weekStr.split('-W');
+    return `Week ${parseInt(w)}, ${year}`;
+  }
+
+  function formatMonth(monthStr) {
+    const d = new Date(monthStr + '-01T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+
+  function getWeeks() {
+    const weeks = {};
+    for (const day of DATA.days) {
+      // Use source week number if available, otherwise fall back to ISO week
+      const week = day._week !== undefined ? `week_${day._week}` : getISOWeek(day.date);
+      if (!weeks[week]) {
+        weeks[week] = {
+          days: [],
+          dateRange: day._weekDateRange || null,
+          weekNumber: day._week || null
+        };
+      }
+      weeks[week].days.push(day);
+    }
+    // Sort by week number if available, otherwise by key
+    return Object.entries(weeks).sort((a, b) => {
+      const aNum = a[1].weekNumber;
+      const bNum = b[1].weekNumber;
+      if (aNum !== null && bNum !== null) return aNum - bNum;
+      return a[0].localeCompare(b[0]);
+    });
+  }
+
+  function getMonths() {
+    const months = {};
+    for (const day of DATA.days) {
+      const month = getMonth(day.date);
+      if (!months[month]) months[month] = [];
+      months[month].push(day);
+    }
+    return Object.entries(months).sort((a, b) => a[0].localeCompare(b[0]));
+  }
+
+  function calculateAverages(days) {
+    if (!days.length) return null;
+    const totals = { cal: 0, protein: 0, carbs: 0, fat: 0 };
+    let sugar = 0, sugarCount = 0;
+    let deficit = 0, deficitCount = 0;
+
+    for (const day of days) {
+      if (day.totals) {
+        totals.cal += day.totals.cal || 0;
+        totals.protein += day.totals.protein || 0;
+        totals.carbs += day.totals.carbs || 0;
+        totals.fat += day.totals.fat || 0;
+      }
+      if (day._extra?.sugar !== undefined) {
+        sugar += day._extra.sugar;
+        sugarCount++;
+      }
+      if (day._extra?.deficit !== undefined) {
+        deficit += day._extra.deficit;
+        deficitCount++;
+      }
+    }
+
+    const n = days.length;
+    return {
+      cal: totals.cal / n,
+      protein: totals.protein / n,
+      carbs: totals.carbs / n,
+      fat: totals.fat / n,
+      sugar: sugarCount ? sugar / sugarCount : null,
+      deficit: deficitCount ? deficit / deficitCount : null,
+      totalDeficit: deficitCount ? deficit : null,
+      daysCount: n
+    };
+  }
+
+  function getWorkoutStats(days) {
+    const workouts = days.filter(d => d.workout);
+    const prs = [];
+    let totalVolume = 0;
+    let totalCardio = 0;
+
+    for (const day of workouts) {
+      if (day.workout.volume) totalVolume += day.workout.volume;
+      if (day.workout.exercises) {
+        for (const ex of day.workout.exercises) {
+          if (ex.pr) prs.push(ex.name);
+          if (ex.calories) totalCardio += ex.calories;
+        }
+      }
+      if (day.workout.caloriesBurned) totalCardio += day.workout.caloriesBurned - (day.workout.exercises?.reduce((s, e) => s + (e.calories || 0), 0) || 0);
+    }
+
+    return {
+      count: workouts.length,
+      totalVolume,
+      totalCardio,
+      prs
+    };
+  }
+
+  function switchView(view) {
+    currentView = view;
+
+    // Initialize selection if needed
+    if (view === 'month' && !selectedMonth && DATA.days.length) {
+      selectedMonth = getMonth(DATA.days[DATA.days.length - 1].date);
+    }
+    if (view === 'week') {
+      // If coming from day view, find the week containing the selected day
+      if (selectedDate) {
+        const day = DATA.days.find(d => d.date === selectedDate);
+        if (day) {
+          // Match the key format used in getWeeks()
+          selectedWeek = day._week !== undefined ? `week_${day._week}` : getISOWeek(day.date);
+        }
+      }
+      if (!selectedWeek && DATA.days.length) {
+        const weeks = getWeeks();
+        if (weeks.length) {
+          selectedWeek = weeks[weeks.length - 1][0];
+        }
+      }
+    }
+    if (view === 'day') {
+      // Default to the most recent day
+      if (!selectedDate && DATA.days.length) {
+        selectedDate = DATA.days[DATA.days.length - 1].date;
+      }
+    }
+
+    renderDateNav();
+    renderDashboard();
+  }
+
+  // Legacy function - view switcher removed, now using breadcrumb nav
+  function renderViewSwitcher() {
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      const isActive = btn.dataset.view === currentView;
+      btn.className = `view-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+        isActive ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
+      }`;
+    });
+  }
+
+  function getStatus(value, [min, max]) {
+    if (value < min) return 'under';
+    if (value > max) return 'over';
+    return 'target';
+  }
+
+  function getProgress(value, [min, max]) {
+    const target = (min + max) / 2;
+    return Math.min((value / target) * 100, 120);
+  }
+
+  function renderDateNav() {
+    const nav = document.getElementById('date-nav');
+    const mobileNav = document.getElementById('date-nav-mobile');
+
+    const months = getMonths();
+    const weeks = getWeeks();
+    const monthIndex = months.findIndex(([m]) => m === selectedMonth);
+    const weekIndex = weeks.findIndex(([w]) => w === selectedWeek);
+    const dayIndex = DATA.days.findIndex(d => d.date === selectedDate);
+
+    // Desktop nav
+    const viewBtn = (view, label) => `<button onclick="switchView('${view}')" class="px-2.5 py-1 text-sm font-medium rounded transition-colors ${currentView === view ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500'}">${label}</button>`;
+    const arrowBtn = (dir, onclick, disabled) => `<button onclick="${onclick}" class="size-6 flex items-center justify-center rounded ${disabled ? 'text-neutral-300' : 'text-neutral-500'}" ${disabled ? 'disabled' : ''}><svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${dir === 'prev' ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'}"/></svg></button>`;
+
+    // Mobile nav - 36px touch targets
+    const mViewBtn = (view, label) => `<button onclick="switchView('${view}')" class="size-9 flex items-center justify-center text-sm font-medium transition-colors ${currentView === view ? 'text-neutral-900' : 'text-neutral-400 active:bg-neutral-100 rounded-full'}"><span class="${currentView === view ? 'bg-neutral-900 text-white px-2.5 py-1 rounded-full text-xs' : ''}">${label}</span></button>`;
+    const mArrowBtn = (dir, onclick, disabled) => `<button onclick="${onclick}" class="size-9 flex items-center justify-center rounded-full ${disabled ? 'text-neutral-300' : 'text-neutral-600 active:bg-neutral-100'}" ${disabled ? 'disabled' : ''}><svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${dir === 'prev' ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'}"/></svg></button>`;
+
+    let desktopHTML = '';
+    let mobileHTML = '';
+
+    if (currentView === 'day') {
+      const day = DATA.days[dayIndex];
+      const label = day ? formatDate(day.date) : 'No data';
+      const shortLabel = day ? ((new Date(day.date + 'T00:00:00').getMonth() + 1) + '/' + new Date(day.date + 'T00:00:00').getDate()) : '—';
+      desktopHTML = `<div class="flex items-center bg-neutral-100 rounded-lg p-1"><div class="flex">${viewBtn('month', 'M')}${viewBtn('week', 'W')}${viewBtn('day', 'D')}</div><div class="w-px h-4 bg-neutral-300 mx-2"></div>${arrowBtn('prev', 'navDay(-1)', dayIndex <= 0)}<span class="px-2 text-sm font-medium">${label}</span>${arrowBtn('next', 'navDay(1)', dayIndex >= DATA.days.length - 1)}</div>`;
+      mobileHTML = `${mArrowBtn('prev', 'navDay(-1)', dayIndex <= 0)}<div class="flex items-center">${mViewBtn('month', 'M')}${mViewBtn('week', 'W')}${mViewBtn('day', 'D')}</div><span class="min-w-11 h-11 flex items-center justify-center text-sm font-semibold tabular">${shortLabel}</span>${mArrowBtn('next', 'navDay(1)', dayIndex >= DATA.days.length - 1)}`;
+    } else if (currentView === 'week') {
+      const weekData = weeks[weekIndex]?.[1];
+      const label = weekData?.weekNumber !== null ? `Week ${weekData?.weekNumber}` : formatWeek(selectedWeek);
+      const shortLabel = weekData?.weekNumber !== null ? `W${weekData?.weekNumber}` : 'Wk';
+      desktopHTML = `<div class="flex items-center bg-neutral-100 rounded-lg p-1"><div class="flex">${viewBtn('month', 'M')}${viewBtn('week', 'W')}${viewBtn('day', 'D')}</div><div class="w-px h-4 bg-neutral-300 mx-2"></div>${arrowBtn('prev', 'navWeek(-1)', weekIndex <= 0)}<span class="px-2 text-sm font-medium">${label}</span>${arrowBtn('next', 'navWeek(1)', weekIndex >= weeks.length - 1)}</div>`;
+      mobileHTML = `${mArrowBtn('prev', 'navWeek(-1)', weekIndex <= 0)}<div class="flex items-center">${mViewBtn('month', 'M')}${mViewBtn('week', 'W')}${mViewBtn('day', 'D')}</div><span class="min-w-11 h-11 flex items-center justify-center text-sm font-semibold">${shortLabel}</span>${mArrowBtn('next', 'navWeek(1)', weekIndex >= weeks.length - 1)}`;
+    } else if (currentView === 'month') {
+      const label = selectedMonth ? formatMonth(selectedMonth) : 'All';
+      const shortLabel = selectedMonth ? label.slice(0, 3) : 'All';
+      desktopHTML = `<div class="flex items-center bg-neutral-100 rounded-lg p-1"><div class="flex">${viewBtn('month', 'M')}${viewBtn('week', 'W')}${viewBtn('day', 'D')}</div><div class="w-px h-4 bg-neutral-300 mx-2"></div>${arrowBtn('prev', 'navMonth(-1)', monthIndex <= 0)}<span class="px-2 text-sm font-medium">${label}</span>${arrowBtn('next', 'navMonth(1)', monthIndex >= months.length - 1)}</div>`;
+      mobileHTML = `${mArrowBtn('prev', 'navMonth(-1)', monthIndex <= 0)}<div class="flex items-center">${mViewBtn('month', 'M')}${mViewBtn('week', 'W')}${mViewBtn('day', 'D')}</div><span class="min-w-11 h-11 flex items-center justify-center text-sm font-semibold">${shortLabel}</span>${mArrowBtn('next', 'navMonth(1)', monthIndex >= months.length - 1)}`;
+    }
+
+    nav.innerHTML = desktopHTML;
+    if (mobileNav) mobileNav.innerHTML = mobileHTML;
+  }
+
+  function navDay(dir) {
+    const dayIndex = DATA.days.findIndex(d => d.date === selectedDate);
+    const newIndex = dayIndex + dir;
+    if (newIndex >= 0 && newIndex < DATA.days.length) {
+      selectedDate = DATA.days[newIndex].date;
+      // Update selected week/month to match
+      const day = DATA.days[newIndex];
+      selectedMonth = day.date.slice(0, 7);
+      selectedWeek = day._week !== undefined ? `week_${day._week}` : getISOWeek(day.date);
+      renderDateNav();
+      renderDashboard();
+    }
+  }
+
+  function navWeek(dir) {
+    const weeks = getWeeks();
+    const weekIndex = weeks.findIndex(([w]) => w === selectedWeek);
+    const newIndex = weekIndex + dir;
+    if (newIndex >= 0 && newIndex < weeks.length) {
+      selectedWeek = weeks[newIndex][0];
+      // Update selected month to match first day of week
+      const firstDay = weeks[newIndex][1].days[0];
+      if (firstDay) selectedMonth = firstDay.date.slice(0, 7);
+      renderDateNav();
+      renderDashboard();
+    }
+  }
+
+  function navMonth(dir) {
+    const months = getMonths();
+    const monthIndex = months.findIndex(([m]) => m === selectedMonth);
+    const newIndex = monthIndex + dir;
+    if (newIndex >= 0 && newIndex < months.length) {
+      selectedMonth = months[newIndex][0];
+      renderDateNav();
+      renderDashboard();
+    }
+  }
+
+  function selectDate(date) {
+    selectedDate = date;
+    // Sync week and month
+    const day = DATA.days.find(d => d.date === date);
+    if (day) {
+      selectedMonth = date.slice(0, 7);
+      selectedWeek = day._week !== undefined ? `week_${day._week}` : getISOWeek(day.date);
+    }
+    renderDateNav();
+    renderDashboard();
+  }
+
+  function selectWeek(week) {
+    selectedWeek = week;
+    // Sync month from first day of week
+    const weeks = getWeeks();
+    const weekData = weeks.find(([w]) => w === week);
+    if (weekData && weekData[1].days.length) {
+      selectedMonth = weekData[1].days[0].date.slice(0, 7);
+    }
+    renderDateNav();
+    renderDashboard();
+  }
+
+  function selectMonth(month) {
+    selectedMonth = month;
+    renderDateNav();
+    renderDashboard();
+  }
+
+  function renderCompactMacroCard(key, value, target) {
+    const [min, max] = target;
+    const status = getStatus(value, target);
+    const progress = getProgress(value, target);
+    const color = COLORS[key];
+    const midTarget = Math.round((min + max) / 2);
+
+    const statusIndicator = {
+      under: 'text-neutral-400',
+      over: 'text-neutral-400',
+      target: 'text-green-500'
+    }[status];
+
+    return `
+      <div class="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-neutral-200">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-xs sm:text-sm font-medium ${color.text}">${LABELS[key]}</span>
+          <span class="text-xs sm:text-sm ${statusIndicator}">${status === 'target' ? '✓' : status === 'under' ? '↓' : '↑'}</span>
+        </div>
+        <div class="text-lg sm:text-2xl font-semibold tabular">${Math.round(value)}<span class="text-xs sm:text-sm text-neutral-400 font-normal ml-1">/ ${midTarget}${UNITS[key]}</span></div>
+        <div class="h-1.5 sm:h-2 bg-neutral-100 rounded-full mt-2 sm:mt-3 overflow-hidden">
+          <div class="${color.bar} h-full rounded-full" style="width: ${Math.min(progress, 100)}%"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderMacroCard(key, value, target, prefix = '') {
+    const [min, max] = target;
+    const status = getStatus(value, target);
+    const progress = getProgress(value, target);
+    const color = COLORS[key];
+
+    const statusIcon = {
+      under: `<span class="text-neutral-400">↓</span>`,
+      over: `<span class="text-neutral-400">↑</span>`,
+      target: `<span class="text-green-500">✓</span>`
+    }[status];
+
+    const label = prefix ? `Avg ${LABELS[key]}` : LABELS[key];
+
+    return `
+      <div class="bg-white rounded-2xl p-5 border border-neutral-200">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-sm font-medium ${color.text}">${label}</span>
+          ${statusIcon}
+        </div>
+        <div class="flex items-baseline gap-1.5 mb-4">
+          <span class="text-3xl font-semibold tabular">${Math.round(value)}</span>
+          <span class="text-base text-neutral-400">${UNITS[key]}</span>
+        </div>
+        <div class="h-2 bg-neutral-100 rounded-full overflow-hidden">
+          <div class="${color.bar} h-full rounded-full" style="width: ${Math.min(progress, 100)}%"></div>
+        </div>
+        <div class="flex justify-between mt-2 text-sm text-neutral-400 tabular">
+          <span>${min}</span>
+          <span>${max}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderMeals(meals) {
+    if (!meals?.length) return '';
+
+    return `
+      <section class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 overflow-hidden">
+        <div class="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-neutral-100">
+          <h2 class="text-xs sm:text-sm font-medium text-neutral-500">Meals</h2>
+        </div>
+        <div class="divide-y divide-neutral-100 max-h-72 sm:max-h-80 overflow-y-auto">
+          ${meals.map(meal => `
+            <div class="px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+              <span class="text-sm sm:text-base truncate">${meal.item}</span>
+              <div class="flex gap-1.5 sm:gap-3 text-xs sm:text-sm tabular shrink-0">
+                <span class="text-neutral-500">${meal.cal}</span>
+                <span class="text-red-600">${meal.protein}p</span>
+                <span class="text-amber-600 hidden sm:inline">${meal.carbs}c</span>
+                <span class="text-sky-600 hidden sm:inline">${meal.fat}f</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderExerciseDetail(ex) {
+    // Cardio (cycling, etc.)
+    if (ex.distance !== undefined) {
+      let detail = `${ex.distance} mi`;
+      if (ex.duration) detail += ` · ${ex.duration} min`;
+      if (ex.calories) detail += ` · ${ex.calories} cal`;
+      return detail;
+    }
+
+    // Duration-based (plank, etc.)
+    if (ex.duration !== undefined && !ex.weight && !ex.reps) {
+      let detail = `${ex.duration}s`;
+      if (ex.sets) detail += ` × ${ex.sets}`;
+      return detail;
+    }
+
+    // Assisted exercises (negative weight)
+    if (ex.assistWeight !== undefined) {
+      return `-${ex.assistWeight} lb × ${ex.reps} × ${ex.sets}`;
+    }
+
+    // Standard weight training
+    if (ex.weight !== undefined) {
+      return `${ex.weight} lb × ${ex.reps} × ${ex.sets}`;
+    }
+
+    // Fallback
+    return '';
+  }
+
+  function renderWorkout(workout) {
+    if (!workout) return '';
+
+    // Build header stats
+    const stats = [];
+    if (workout.duration) stats.push(`${workout.duration}m`);
+    if (workout.caloriesBurned) stats.push(`${workout.caloriesBurned}cal`);
+    if (workout.volume) stats.push(`${workout.volume.toLocaleString()}vol`);
+
+    // Handle workouts without exercises (like "Sledding")
+    const exercisesList = workout.exercises ? `
+      <div class="divide-y divide-neutral-100">
+        ${workout.exercises.map(ex => `
+          <div class="px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <span class="text-sm sm:text-base truncate">${ex.name}</span>
+              ${ex.pr ? '<span class="text-xs font-medium bg-green-100 text-green-700 px-1 sm:px-1.5 py-0.5 rounded-md shrink-0">PR</span>' : ''}
+            </div>
+            <span class="text-xs sm:text-sm tabular text-neutral-500 shrink-0">
+              ${renderExerciseDetail(ex)}
+            </span>
+          </div>
+        `).join('')}
+      </div>
+    ` : '';
+
+    // Show activity type if different from standard workout
+    const title = workout.activity || workout.type || 'Workout';
+
+    return `
+      <section class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 overflow-hidden">
+        <div class="px-3 sm:px-5 py-2.5 sm:py-3 ${exercisesList ? 'border-b border-neutral-100' : ''} flex items-center justify-between">
+          <h2 class="text-xs sm:text-sm font-medium text-neutral-500">${title}</h2>
+          <div class="flex gap-2 sm:gap-3 text-xs sm:text-sm text-neutral-500">
+            ${stats.map(s => `<span>${s}</span>`).join('')}
+          </div>
+        </div>
+        ${exercisesList}
+      </section>
+    `;
+  }
+
+  function renderNotes(notes) {
+    if (!notes) return '';
+
+    return `
+      <section class="bg-neutral-100 rounded-xl sm:rounded-2xl px-3 sm:px-5 py-3 sm:py-4">
+        <p class="text-sm sm:text-base text-neutral-600">${notes}</p>
+      </section>
+    `;
+  }
+
+  function renderExtraData(day) {
+    if (!day._extra) return '';
+
+    const items = [];
+
+    if (day._extra.deficit !== undefined) {
+      const d = day._extra.deficit;
+      const color = d < 0 ? 'text-green-600' : 'text-red-600';
+      items.push({ label: 'Deficit', value: `<span class="${color}">${d > 0 ? '+' : ''}${d}</span>` });
+    }
+    if (day._extra.sugar !== undefined) {
+      const s = day._extra.sugar;
+      const color = s > 50 ? 'text-red-600' : 'text-green-600';
+      items.push({ label: 'Sugar', value: `<span class="${color}">${s}g</span>` });
+    }
+    if (day._extra.tdee !== undefined) {
+      items.push({ label: 'TDEE', value: `${day._extra.tdee}` });
+    }
+
+    if (items.length === 0) return '';
+
+    return `
+      <div class="flex gap-4 text-sm text-neutral-500 mt-1">
+        ${items.map(({ label, value }) => `
+          <span><span class="text-neutral-400">${label}:</span> <span class="tabular">${value}</span></span>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function renderUnknownFields(day) {
+    if (!day._unknownFields?.length) return '';
+
+    // Extract the actual values for unknown fields
+    const fieldValues = day._unknownFields.map(field => {
+      // Parse the field path and get the value
+      let value;
+      try {
+        const parts = field.replace(/\[(\d+)\]/g, '.$1').split('.');
+        value = parts.reduce((obj, key) => obj?.[key], day);
+        if (typeof value === 'object') {
+          value = JSON.stringify(value, null, 2);
+        }
+      } catch {
+        value = '(unable to read)';
+      }
+      return { field, value };
+    });
+
+    return `
+      <section class="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden mt-6">
+        <details class="group">
+          <summary class="px-5 py-3 cursor-pointer flex items-center justify-between text-sm font-medium text-amber-800 hover:bg-amber-100">
+            <span>${day._unknownFields.length} field(s) not displayed</span>
+            <svg class="size-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </summary>
+          <div class="px-5 py-4 border-t border-amber-200 bg-amber-50/50 space-y-3">
+            ${fieldValues.map(({ field, value }) => `
+              <div class="text-sm">
+                <span class="font-mono text-amber-700">${field}</span>
+                <pre class="mt-1 p-3 bg-white rounded-lg text-neutral-600 overflow-x-auto text-sm">${typeof value === 'string' ? value : JSON.stringify(value)}</pre>
+              </div>
+            `).join('')}
+          </div>
+        </details>
+      </section>
+    `;
+  }
+
+  function renderDashboard() {
+    const dashboard = document.getElementById('dashboard');
+
+    // Clean up old charts
+    destroyCharts();
+
+    if (currentView === 'day') {
+      renderDayView(dashboard);
+    } else if (currentView === 'week') {
+      renderWeekView(dashboard);
+    } else if (currentView === 'month') {
+      renderMonthView(dashboard);
+    }
+  }
+
+  function renderDayView(dashboard) {
+    const day = DATA.days.find(d => d.date === selectedDate);
+
+    if (!day) {
+      dashboard.innerHTML = `
+        <div class="text-center py-20 text-neutral-400">
+          <p class="text-base mb-3">No data yet</p>
+          <button onclick="openModal()" class="text-sm text-neutral-900 underline underline-offset-2 hover:no-underline">
+            Import your data
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    const macros = ['cal', 'protein', 'carbs', 'fat'];
+
+    // Build day stats
+    const dayStats = [];
+    const deficit = day._extra?.deficit ?? day.deficit;
+    const tdee = day._extra?.tdee ?? day.tdee;
+    const sugar = day._extra?.sugar ?? day.totals?.sugar;
+
+    if (tdee) {
+      dayStats.push({ label: 'TDEE', value: Math.round(tdee), color: '' });
+    }
+    if (deficit !== undefined) {
+      const color = deficit < 0 ? 'text-green-600' : 'text-red-600';
+      dayStats.push({ label: 'Deficit', value: Math.round(deficit), color });
+    }
+    if (sugar !== undefined) {
+      const color = sugar <= 50 ? 'text-green-600' : 'text-red-600';
+      dayStats.push({ label: 'Sugar', value: `${Math.round(sugar)}g`, color });
+    }
+    if (day.workout) {
+      const hasPR = day.workout.exercises?.some(e => e.pr);
+      dayStats.push({
+        label: 'Workout',
+        value: day.workout.type || day.workout.activity || '✓',
+        color: hasPR ? 'text-green-600' : ''
+      });
+    }
+
+    dashboard.innerHTML = `
+      <!-- Day Header + Stats Row -->
+      <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end justify-between gap-3 sm:gap-4 mb-5 sm:mb-6">
+        <div>
+          <h2 class="text-lg sm:text-xl font-semibold">${formatDate(day.date)}</h2>
+          <p class="text-xs sm:text-sm text-neutral-500">${day.dayOfWeek || ''}</p>
+        </div>
+        <div class="flex flex-wrap gap-3 sm:gap-6">
+          ${dayStats.map(s => `
+            <div class="text-left sm:text-right">
+              <div class="text-xs sm:text-sm text-neutral-400">${s.label}</div>
+              <div class="text-base sm:text-lg font-semibold tabular ${s.color}">${s.value}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Macro Summary -->
+      <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        ${macros.map(key => renderCompactMacroCard(key, day.totals[key], DATA.targets[key])).join('')}
+      </section>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        ${renderMeals(day.meals)}
+        <div class="space-y-6">
+          ${renderWorkout(day.workout)}
+          ${renderNotes(day.notes)}
+        </div>
+      </div>
+      ${renderUnknownFields(day)}
+    `;
+  }
+
+  function renderWeekView(dashboard) {
+    const weeks = getWeeks();
+    const weekEntry = weeks.find(([w]) => w === selectedWeek);
+
+    if (!weekEntry) {
+      dashboard.innerHTML = `
+        <div class="text-center py-20 text-neutral-400">
+          <p class="text-base mb-3">No data yet</p>
+          <button onclick="openModal()" class="text-sm text-neutral-900 underline underline-offset-2 hover:no-underline">
+            Import your data
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    const [weekKey, weekData] = weekEntry;
+    const days = weekData.days;
+    const avg = calculateAverages(days);
+    const workoutStats = getWorkoutStats(days);
+    const macros = ['cal', 'protein', 'carbs', 'fat'];
+
+    // Check for stored week metadata
+    const weekNum = weekData.weekNumber;
+    const weekMeta = weekNum !== null ? DATA._meta?.[`week_${weekNum}`] : null;
+
+    // Format header
+    const weekTitle = weekNum !== null ? `Week ${weekNum}` : formatWeek(weekKey);
+    const weekSubtitle = weekData.dateRange || `${days.length} days tracked`;
+
+    dashboard.innerHTML = `
+      <!-- Week Header + Stats Row -->
+      <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end justify-between gap-3 sm:gap-4 mb-5 sm:mb-6">
+        <div>
+          <h2 class="text-lg sm:text-xl font-semibold">${weekTitle}</h2>
+          <p class="text-xs sm:text-sm text-neutral-500">${weekSubtitle}</p>
+        </div>
+        <div class="flex flex-wrap gap-3 sm:gap-6">
+          ${avg.totalDeficit !== null ? `
+            <div class="text-left sm:text-right">
+              <div class="text-xs sm:text-sm text-neutral-400">Fat Loss</div>
+              <div class="text-base sm:text-lg font-semibold tabular text-green-600">${(avg.totalDeficit / -3500).toFixed(1)} lb</div>
+            </div>
+          ` : ''}
+          ${avg.deficit !== null ? `
+            <div class="text-left sm:text-right">
+              <div class="text-xs sm:text-sm text-neutral-400">Deficit</div>
+              <div class="text-base sm:text-lg font-semibold tabular ${avg.deficit < 0 ? 'text-green-600' : 'text-red-600'}">${Math.round(avg.deficit)}/d</div>
+            </div>
+          ` : ''}
+          ${avg.sugar !== null ? `
+            <div class="text-left sm:text-right">
+              <div class="text-xs sm:text-sm text-neutral-400">Sugar</div>
+              <div class="text-base sm:text-lg font-semibold tabular ${avg.sugar <= 50 ? 'text-green-600' : 'text-red-600'}">${Math.round(avg.sugar)}g</div>
+            </div>
+          ` : ''}
+          <div class="text-left sm:text-right">
+            <div class="text-xs sm:text-sm text-neutral-400">Workouts</div>
+            <div class="text-base sm:text-lg font-semibold tabular">${workoutStats.count}${workoutStats.prs.length ? ` <span class="text-green-600">(${workoutStats.prs.length} PR)</span>` : ''}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Macros Row -->
+      <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        ${macros.map(key => renderCompactMacroCard(key, avg[key], DATA.targets[key])).join('')}
+      </section>
+
+      <!-- Two Column Layout: Charts + Daily Breakdown -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Charts Column -->
+        <div class="space-y-6">
+          ${days.length >= 3 ? `
+            <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 p-3 sm:p-5">
+              <h4 class="text-sm font-medium text-neutral-500 mb-5">Nutrition</h4>
+              <div class="h-40">
+                <canvas id="macros-chart"></canvas>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 p-3 sm:p-5">
+              <h4 class="text-sm font-medium text-neutral-500 mb-5">Calorie Deficit</h4>
+              <div class="h-32">
+                <canvas id="deficit-chart"></canvas>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Daily Breakdown Column -->
+        <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 overflow-hidden">
+          <div class="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-neutral-100">
+            <h3 class="text-xs sm:text-sm font-medium text-neutral-500">Daily</h3>
+          </div>
+          <div class="divide-y divide-neutral-100 max-h-80 sm:max-h-96 overflow-y-auto">
+            ${days.map(day => `
+              <button onclick="switchView('day'); selectDate('${day.date}')" class="w-full px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between hover:bg-neutral-50 text-left gap-2">
+                <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <span class="text-sm sm:text-base truncate">${formatDate(day.date).split(',')[0]}</span>
+                  ${day.workout ? `<span class="text-xs px-1 sm:px-1.5 py-0.5 rounded-md bg-green-100 text-green-700 shrink-0">${day.workout.type || day.workout.activity}</span>` : ''}
+                </div>
+                <div class="flex gap-1.5 sm:gap-3 text-xs sm:text-sm tabular shrink-0">
+                  <span class="text-neutral-500">${Math.round(day.totals.cal)}</span>
+                  <span class="text-red-600">${Math.round(day.totals.protein)}p</span>
+                  <span class="text-amber-600 hidden sm:inline">${Math.round(day.totals.carbs)}c</span>
+                  <span class="text-sky-600 hidden sm:inline">${Math.round(day.totals.fat)}f</span>
+                </div>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      ${weekMeta?.insights || weekMeta?.actionItems ? `
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          ${weekMeta?.insights ? renderInsights(weekMeta.insights) : '<div></div>'}
+          ${weekMeta?.actionItems ? renderActionItems(weekMeta.actionItems) : ''}
+        </div>
+      ` : ''}
+
+      <!-- Workout Analysis -->
+      ${days.some(d => d.workout?.exercises) ? `
+        <div style="margin-top: 5rem;">
+          ${renderWorkoutAnalysis(days, 'week')}
+        </div>
+      ` : ''}
+    `;
+
+    // Render charts after DOM update
+    if (days.length >= 3) {
+      setTimeout(() => renderChartsCompact(days), 0);
+    }
+  }
+
+  function renderMonthView(dashboard) {
+    const months = getMonths();
+    const monthData = months.find(([m]) => m === selectedMonth);
+
+    if (!monthData) {
+      dashboard.innerHTML = `
+        <div class="text-center py-20 text-neutral-400">
+          <p class="text-base mb-3">No data yet</p>
+          <button onclick="openModal()" class="text-sm text-neutral-900 underline underline-offset-2 hover:no-underline">
+            Import your data
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    const [month, days] = monthData;
+    const avg = calculateAverages(days);
+    const workoutStats = getWorkoutStats(days);
+    const macros = ['cal', 'protein', 'carbs', 'fat'];
+
+    // Group by weeks for the breakdown
+    const weeksInMonth = {};
+    for (const day of days) {
+      const weekKey = day._week !== undefined ? `week_${day._week}` : getISOWeek(day.date);
+      if (!weeksInMonth[weekKey]) {
+        weeksInMonth[weekKey] = {
+          days: [],
+          weekNumber: day._week || null,
+          dateRange: day._weekDateRange || null
+        };
+      }
+      weeksInMonth[weekKey].days.push(day);
+    }
+
+    dashboard.innerHTML = `
+      <!-- Month Header + Stats Row -->
+      <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end justify-between gap-3 sm:gap-4 mb-5 sm:mb-6">
+        <div>
+          <h2 class="text-lg sm:text-xl font-semibold">${formatMonth(month)}</h2>
+          <p class="text-xs sm:text-sm text-neutral-500">${days.length} days tracked</p>
+        </div>
+        <div class="flex flex-wrap gap-3 sm:gap-6">
+          ${avg.totalDeficit !== null ? `
+            <div class="text-left sm:text-right">
+              <div class="text-xs sm:text-sm text-neutral-400">Fat Loss</div>
+              <div class="text-base sm:text-lg font-semibold tabular text-green-600">${(avg.totalDeficit / -3500).toFixed(1)} lb</div>
+            </div>
+          ` : ''}
+          ${avg.deficit !== null ? `
+            <div class="text-left sm:text-right">
+              <div class="text-xs sm:text-sm text-neutral-400">Deficit</div>
+              <div class="text-base sm:text-lg font-semibold tabular ${avg.deficit < 0 ? 'text-green-600' : 'text-red-600'}">${Math.round(avg.deficit)}/d</div>
+            </div>
+          ` : ''}
+          ${avg.sugar !== null ? `
+            <div class="text-left sm:text-right">
+              <div class="text-xs sm:text-sm text-neutral-400">Sugar</div>
+              <div class="text-base sm:text-lg font-semibold tabular ${avg.sugar <= 50 ? 'text-green-600' : 'text-red-600'}">${Math.round(avg.sugar)}g</div>
+            </div>
+          ` : ''}
+          <div class="text-left sm:text-right">
+            <div class="text-xs sm:text-sm text-neutral-400">Workouts</div>
+            <div class="text-base sm:text-lg font-semibold tabular">${workoutStats.count}${workoutStats.prs.length ? ` <span class="text-green-600">(${workoutStats.prs.length} PR)</span>` : ''}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Macros Row -->
+      <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        ${macros.map(key => renderCompactMacroCard(key, avg[key], DATA.targets[key])).join('')}
+      </section>
+
+      <!-- Two Column Layout: Charts + Weekly Breakdown -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Charts Column -->
+        <div class="space-y-6">
+          ${days.length >= 3 ? `
+            <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 p-3 sm:p-5">
+              <h4 class="text-sm font-medium text-neutral-500 mb-5">Nutrition</h4>
+              <div class="h-40">
+                <canvas id="macros-chart"></canvas>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 p-3 sm:p-5">
+              <h4 class="text-sm font-medium text-neutral-500 mb-5">Calorie Deficit</h4>
+              <div class="h-32">
+                <canvas id="deficit-chart"></canvas>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Weekly Breakdown Column -->
+        <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 overflow-hidden">
+          <div class="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-neutral-100">
+            <h3 class="text-xs sm:text-sm font-medium text-neutral-500">Weeks</h3>
+          </div>
+          <div class="divide-y divide-neutral-100">
+          ${Object.entries(weeksInMonth).sort((a, b) => {
+            const aNum = a[1].weekNumber;
+            const bNum = b[1].weekNumber;
+            if (aNum !== null && bNum !== null) return aNum - bNum;
+            return a[0].localeCompare(b[0]);
+          }).map(([weekKey, weekInfo]) => {
+            const weekDays = weekInfo.days;
+            const weekAvg = calculateAverages(weekDays);
+            const weekWorkouts = getWorkoutStats(weekDays);
+            const weekLabel = weekInfo.weekNumber !== null ? `Week ${weekInfo.weekNumber}` : formatWeek(weekKey);
+            return `
+              <button onclick="switchView('week'); selectWeek('${weekKey}')" class="w-full px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between hover:bg-neutral-50 text-left gap-2">
+                <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <span class="text-sm sm:text-base font-medium">${weekLabel}</span>
+                  <span class="text-xs sm:text-sm text-neutral-400">${weekDays.length}d, ${weekWorkouts.count}w</span>
+                </div>
+                <div class="flex gap-1.5 sm:gap-3 text-xs sm:text-sm tabular shrink-0">
+                  <span class="text-neutral-500">${Math.round(weekAvg.cal)}</span>
+                  <span class="text-red-600">${Math.round(weekAvg.protein)}p</span>
+                  <span class="text-amber-600 hidden sm:inline">${Math.round(weekAvg.carbs)}c</span>
+                  <span class="text-sky-600 hidden sm:inline">${Math.round(weekAvg.fat)}f</span>
+                </div>
+              </button>
+            `;
+          }).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Workout Analysis -->
+      ${days.some(d => d.workout?.exercises) ? `
+        <div style="margin-top: 5rem;">
+          ${renderWorkoutAnalysis(days, 'month')}
+        </div>
+      ` : ''}
+    `;
+
+    // Render charts after DOM update
+    if (days.length >= 3) {
+      setTimeout(() => renderChartsCompact(days), 0);
+    }
+  }
+
+  // Chart instances for cleanup
+  let activeCharts = [];
+
+  function destroyCharts() {
+    activeCharts.forEach(chart => chart.destroy());
+    activeCharts = [];
+  }
+
+  function renderCharts(days, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container || !days.length) return;
+
+    // Sort days by date
+    const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
+    const labels = sortedDays.map(d => {
+      const date = new Date(d.date + 'T00:00:00');
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+
+    // Common chart options
+    const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          padding: 12,
+          titleFont: { size: 13 },
+          bodyFont: { size: 12 },
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 11 }, color: '#a3a3a3' }
+        },
+        y: {
+          grid: { color: '#f5f5f5' },
+          ticks: { font: { size: 11 }, color: '#a3a3a3' }
+        }
+      }
+    };
+
+    // Macros chart
+    const macrosCtx = document.getElementById('macros-chart')?.getContext('2d');
+    if (macrosCtx) {
+      const chart = new Chart(macrosCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Calories ÷10',
+              data: sortedDays.map(d => d.totals.cal / 10),
+              borderColor: '#f97316',
+              backgroundColor: '#f9731620',
+              tension: 0.3,
+              fill: false,
+              pointRadius: 3,
+            },
+            {
+              label: 'Protein',
+              data: sortedDays.map(d => d.totals.protein),
+              borderColor: '#ef4444',
+              backgroundColor: '#ef444420',
+              tension: 0.3,
+              fill: false,
+              pointRadius: 3,
+            },
+            {
+              label: 'Carbs',
+              data: sortedDays.map(d => d.totals.carbs),
+              borderColor: '#f59e0b',
+              backgroundColor: '#f59e0b20',
+              tension: 0.3,
+              fill: false,
+              pointRadius: 3,
+            },
+            {
+              label: 'Fat',
+              data: sortedDays.map(d => d.totals.fat),
+              borderColor: '#0ea5e9',
+              backgroundColor: '#0ea5e920',
+              tension: 0.3,
+              fill: false,
+              pointRadius: 3,
+            }
+          ]
+        },
+        options: {
+          ...commonOptions,
+          plugins: {
+            ...commonOptions.plugins,
+            legend: {
+              display: true,
+              position: 'top',
+              labels: { boxWidth: 12, padding: 16, font: { size: 11 } }
+            },
+            tooltip: {
+              ...commonOptions.plugins.tooltip,
+              callbacks: {
+                label: (ctx) => {
+                  if (ctx.dataset.label === 'Calories ÷10') {
+                    return `Calories: ${Math.round(ctx.raw * 10)}`;
+                  }
+                  return `${ctx.dataset.label}: ${Math.round(ctx.raw)}g`;
+                }
+              }
+            }
+          }
+        }
+      });
+      activeCharts.push(chart);
+    }
+
+    // Deficit chart (if data exists)
+    const deficitCtx = document.getElementById('deficit-chart')?.getContext('2d');
+    const hasDeficitData = sortedDays.some(d => d._extra?.deficit !== undefined);
+    if (deficitCtx && hasDeficitData) {
+      const chart = new Chart(deficitCtx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Deficit',
+            data: sortedDays.map(d => d._extra?.deficit ?? 0),
+            backgroundColor: sortedDays.map(d =>
+              (d._extra?.deficit ?? 0) < 0 ? '#22c55e80' : '#ef444480'
+            ),
+            borderColor: sortedDays.map(d =>
+              (d._extra?.deficit ?? 0) < 0 ? '#22c55e' : '#ef4444'
+            ),
+            borderWidth: 1,
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          ...commonOptions,
+          plugins: {
+            ...commonOptions.plugins,
+            tooltip: {
+              ...commonOptions.plugins.tooltip,
+              callbacks: {
+                label: (ctx) => `Deficit: ${ctx.raw > 0 ? '+' : ''}${Math.round(ctx.raw)}`
+              }
+            }
+          },
+          scales: {
+            ...commonOptions.scales,
+            y: {
+              ...commonOptions.scales.y,
+              beginAtZero: false,
+            }
+          }
+        }
+      });
+      activeCharts.push(chart);
+    }
+
+    // Protein vs Target chart
+    const proteinCtx = document.getElementById('protein-chart')?.getContext('2d');
+    if (proteinCtx) {
+      const [minTarget, maxTarget] = DATA.targets.protein || [180, 200];
+      const chart = new Chart(proteinCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Protein',
+              data: sortedDays.map(d => d.totals.protein),
+              borderColor: '#ef4444',
+              backgroundColor: '#ef444430',
+              tension: 0.3,
+              fill: true,
+              pointRadius: 4,
+              pointBackgroundColor: sortedDays.map(d =>
+                d.totals.protein >= minTarget ? '#22c55e' : '#ef4444'
+              ),
+            },
+            {
+              label: 'Target Min',
+              data: sortedDays.map(() => minTarget),
+              borderColor: '#a3a3a3',
+              borderDash: [5, 5],
+              pointRadius: 0,
+              fill: false,
+            }
+          ]
+        },
+        options: {
+          ...commonOptions,
+          plugins: {
+            ...commonOptions.plugins,
+            legend: {
+              display: true,
+              position: 'top',
+              labels: { boxWidth: 12, padding: 16, font: { size: 11 } }
+            }
+          }
+        }
+      });
+      activeCharts.push(chart);
+    }
+  }
+
+  function renderChartsCompact(days) {
+    if (!days.length) return;
+
+    const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
+    const labels = sortedDays.map(d => {
+      const date = new Date(d.date + 'T00:00:00');
+      return date.toLocaleDateString('en-US', { weekday: 'narrow' });
+    });
+
+    // Apple Health-like chart options
+    const appleOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#fff',
+          titleColor: '#171717',
+          bodyColor: '#525252',
+          borderColor: '#e5e5e5',
+          borderWidth: 1,
+          padding: { top: 10, bottom: 10, left: 14, right: 14 },
+          titleFont: { size: 13, weight: '600' },
+          bodyFont: { size: 13 },
+          cornerRadius: 12,
+          displayColors: true,
+          boxWidth: 10,
+          boxHeight: 10,
+          boxPadding: 6,
+          usePointStyle: true,
+          filter: (item) => !item.dataset.label?.includes('Zone'),
+          callbacks: {
+            title: (items) => {
+              if (!items.length) return '';
+              const date = sortedDays[items[0].dataIndex]?.date;
+              if (!date) return items[0].label;
+              const d = new Date(date + 'T00:00:00');
+              return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          border: { display: false },
+          ticks: { font: { size: 11 }, color: '#a3a3a3', padding: 8 }
+        },
+        y: {
+          display: false
+        }
+      }
+    };
+
+    // Macros chart - Apple Health style line chart
+    const macrosCtx = document.getElementById('macros-chart')?.getContext('2d');
+    if (macrosCtx) {
+      const chart = new Chart(macrosCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Calories ÷10',
+              data: sortedDays.map(d => d.totals.cal / 10),
+              borderColor: '#f97316',
+              backgroundColor: '#f97316',
+              tension: 0.4,
+              pointRadius: 0,
+              pointHoverRadius: 6,
+              pointHoverBackgroundColor: '#f97316',
+              pointHoverBorderColor: '#fff',
+              pointHoverBorderWidth: 2,
+              borderWidth: 2,
+              borderDash: [4, 4],
+              fill: false,
+            },
+            {
+              label: 'Protein',
+              data: sortedDays.map(d => d.totals.protein),
+              borderColor: '#ef4444',
+              backgroundColor: '#ef4444',
+              tension: 0.4,
+              pointRadius: 0,
+              pointHoverRadius: 6,
+              pointHoverBackgroundColor: '#ef4444',
+              pointHoverBorderColor: '#fff',
+              pointHoverBorderWidth: 2,
+              borderWidth: 3,
+              fill: false,
+            },
+            {
+              label: 'Carbs',
+              data: sortedDays.map(d => d.totals.carbs),
+              borderColor: '#f59e0b',
+              backgroundColor: '#f59e0b',
+              tension: 0.4,
+              pointRadius: 0,
+              pointHoverRadius: 6,
+              pointHoverBackgroundColor: '#f59e0b',
+              pointHoverBorderColor: '#fff',
+              pointHoverBorderWidth: 2,
+              borderWidth: 3,
+              fill: false,
+            },
+            {
+              label: 'Fat',
+              data: sortedDays.map(d => d.totals.fat),
+              borderColor: '#0ea5e9',
+              backgroundColor: '#0ea5e9',
+              tension: 0.4,
+              pointRadius: 0,
+              pointHoverRadius: 6,
+              pointHoverBackgroundColor: '#0ea5e9',
+              pointHoverBorderColor: '#fff',
+              pointHoverBorderWidth: 2,
+              borderWidth: 3,
+              fill: false,
+            },
+          ]
+        },
+        options: {
+          ...appleOptions,
+          plugins: {
+            ...appleOptions.plugins,
+            legend: { display: false },
+            tooltip: {
+              ...appleOptions.plugins.tooltip,
+              usePointStyle: false,
+              boxWidth: 20,
+              boxHeight: 3,
+              callbacks: {
+                ...appleOptions.plugins.tooltip.callbacks,
+                label: (ctx) => {
+                  const label = ctx.dataset.label;
+                  if (label === 'Calories ÷10') {
+                    return `Calories  ${Math.round(ctx.raw * 10)}`;
+                  }
+                  return `${label}  ${Math.round(ctx.raw)}g`;
+                },
+                labelColor: (ctx) => {
+                  const color = ctx.dataset.borderColor;
+                  return {
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderWidth: 2,
+                    borderDash: ctx.dataset.label === 'Calories ÷10' ? [3, 2] : [],
+                    borderRadius: 2
+                  };
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              border: { display: false },
+              ticks: { font: { size: 11 }, color: '#a3a3a3', padding: 8 }
+            },
+            y: {
+              display: false,
+            }
+          }
+        }
+      });
+      activeCharts.push(chart);
+    }
+
+    // Deficit chart - Apple Health style
+    const deficitCtx = document.getElementById('deficit-chart')?.getContext('2d');
+    const hasDeficitData = sortedDays.some(d => d._extra?.deficit !== undefined);
+    if (deficitCtx && hasDeficitData) {
+      const chart = new Chart(deficitCtx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Deficit',
+              data: sortedDays.map(d => d._extra?.deficit ?? 0),
+              backgroundColor: sortedDays.map(d => (d._extra?.deficit ?? 0) < 0 ? '#22c55e' : '#ef4444'),
+              borderRadius: 100,
+              borderSkipped: false,
+              barPercentage: 0.5,
+              categoryPercentage: 0.8,
+            },
+          ]
+        },
+        options: {
+          ...appleOptions,
+          plugins: {
+            ...appleOptions.plugins,
+            tooltip: {
+              ...appleOptions.plugins.tooltip,
+              displayColors: false,
+              callbacks: {
+                ...appleOptions.plugins.tooltip.callbacks,
+                label: (ctx) => {
+                  const value = Math.round(ctx.raw);
+                  const sign = value > 0 ? '+' : '';
+                  const status = value < 0 ? 'deficit' : 'surplus';
+                  return `${sign}${value} cal ${status}`;
+                }
+              }
+            }
+          },
+          scales: {
+            ...appleOptions.scales,
+            y: {
+              display: false,
+              beginAtZero: true,
+            }
+          }
+        }
+      });
+      activeCharts.push(chart);
+    }
+  }
+
+  function renderChartsSection(days) {
+    const hasDeficitData = days.some(d => d._extra?.deficit !== undefined);
+
+    return `
+      <section class="space-y-4">
+        <h3 class="font-medium">Trends</h3>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="bg-white rounded-xl border border-neutral-200 p-4">
+            <h4 class="text-sm font-medium text-neutral-500 mb-3">Macros</h4>
+            <div class="h-48">
+              <canvas id="macros-chart"></canvas>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl border border-neutral-200 p-4">
+            <h4 class="text-sm font-medium text-neutral-500 mb-3">Protein vs Target</h4>
+            <div class="h-48">
+              <canvas id="protein-chart"></canvas>
+            </div>
+          </div>
+          ${hasDeficitData ? `
+            <div class="bg-white rounded-xl border border-neutral-200 p-4 lg:col-span-2">
+              <h4 class="text-sm font-medium text-neutral-500 mb-3">Daily Deficit</h4>
+              <div class="h-48">
+                <canvas id="deficit-chart"></canvas>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderInsights(insights) {
+    if (!insights?.length) return '';
+    return `
+      <section class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+        <div class="px-5 py-3 border-b border-neutral-100">
+          <h3 class="text-sm font-medium text-neutral-500">Insights</h3>
+        </div>
+        <ul class="px-5 py-4 space-y-2">
+          ${insights.map(i => `<li class="text-base text-neutral-600 flex gap-3"><span class="text-neutral-400">•</span>${i}</li>`).join('')}
+        </ul>
+      </section>
+    `;
+  }
+
+  function renderActionItems(items) {
+    if (!items?.length) return '';
+    return `
+      <section class="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+        <div class="px-5 py-3 border-b border-amber-200">
+          <h3 class="text-sm font-medium text-amber-700">Action Items</h3>
+        </div>
+        <ul class="px-5 py-4 space-y-2">
+          ${items.map(i => `<li class="text-base text-amber-700 flex gap-3"><span>→</span>${i}</li>`).join('')}
+        </ul>
+      </section>
+    `;
+  }
+
+  function exportData() {
+    const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `care-data-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // File loading
+  function loadFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      document.getElementById('json-input').value = e.target.result;
+      // Auto-import after loading
+      addDay();
+    };
+    reader.onerror = () => {
+      document.getElementById('json-error').textContent = 'Failed to read file';
+      document.getElementById('json-error').classList.remove('hidden');
+    };
+    reader.readAsText(file);
+
+    // Reset input so same file can be selected again
+    event.target.value = '';
+  }
+
+  // Modal functions
+  let currentModalTab = 'import';
+
+  function openModal() {
+    document.getElementById('modal').classList.remove('hidden');
+    document.getElementById('json-input').value = '';
+    document.getElementById('import-name').value = '';
+    document.getElementById('json-error').classList.add('hidden');
+    switchModalTab('import');
+    document.getElementById('json-input').focus();
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.add('hidden');
+  }
+
+  function switchModalTab(tab) {
+    currentModalTab = tab;
+    const importTab = document.getElementById('modal-import');
+    const manageTab = document.getElementById('modal-manage');
+    const importBtn = document.getElementById('import-btn');
+    const tabImport = document.getElementById('tab-import');
+    const tabManage = document.getElementById('tab-manage');
+
+    if (tab === 'import') {
+      importTab.classList.remove('hidden');
+      manageTab.classList.add('hidden');
+      importBtn.classList.remove('hidden');
+      tabImport.classList.add('bg-white', 'text-neutral-900', 'shadow-sm');
+      tabImport.classList.remove('text-neutral-500', 'hover:text-neutral-700');
+      tabManage.classList.remove('bg-white', 'text-neutral-900', 'shadow-sm');
+      tabManage.classList.add('text-neutral-500', 'hover:text-neutral-700');
+    } else {
+      importTab.classList.add('hidden');
+      manageTab.classList.remove('hidden');
+      importBtn.classList.add('hidden');
+      tabManage.classList.add('bg-white', 'text-neutral-900', 'shadow-sm');
+      tabManage.classList.remove('text-neutral-500', 'hover:text-neutral-700');
+      tabImport.classList.remove('bg-white', 'text-neutral-900', 'shadow-sm');
+      tabImport.classList.add('text-neutral-500', 'hover:text-neutral-700');
+      renderImportsList();
+    }
+  }
+
+  function renderImportsList() {
+    const list = document.getElementById('imports-list');
+    const imports = DATA.imports || [];
+
+    // Check for legacy data (days without _importId)
+    const legacyDays = DATA.days.filter(d => !d._importId);
+    const hasLegacy = legacyDays.length > 0;
+
+    if (imports.length === 0 && !hasLegacy) {
+      list.innerHTML = `
+        <div class="text-center py-8 text-neutral-400 text-sm">
+          No imports yet
+        </div>
+      `;
+      return;
+    }
+
+    let html = '';
+
+    // Show legacy data first if exists
+    if (hasLegacy) {
+      const sortedLegacy = [...legacyDays].sort((a, b) => a.date.localeCompare(b.date));
+      const firstDate = sortedLegacy[0]?.date;
+      const lastDate = sortedLegacy[sortedLegacy.length - 1]?.date;
+      const dateRange = firstDate === lastDate
+        ? formatDate(firstDate)
+        : `${formatDate(firstDate)} – ${formatDate(lastDate)}`;
+
+      html += `
+        <div class="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
+          <div class="min-w-0 flex-1">
+            <div class="font-medium text-sm truncate">Previous data</div>
+            <div class="text-xs text-neutral-500">${legacyDays.length} day${legacyDays.length !== 1 ? 's' : ''} · ${dateRange}</div>
+          </div>
+          <button
+            onclick="deleteImport('_legacy')"
+            class="ml-3 size-8 flex items-center justify-center text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            aria-label="Delete import"
+          >
+            <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+        </div>
+      `;
+    }
+
+    // Show tracked imports
+    html += imports.map(imp => {
+      const dayCount = DATA.days.filter(d => d._importId === imp.id).length;
+      return `
+        <div class="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
+          <div class="min-w-0 flex-1">
+            <div class="font-medium text-sm truncate">${imp.name}</div>
+            <div class="text-xs text-neutral-500">${dayCount} day${dayCount !== 1 ? 's' : ''} · ${imp.dateRange || 'No date range'}</div>
+          </div>
+          <button
+            onclick="deleteImport('${imp.id}')"
+            class="ml-3 size-8 flex items-center justify-center text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            aria-label="Delete import"
+          >
+            <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    list.innerHTML = html;
+  }
+
+  function deleteImport(importId) {
+    // Handle legacy data
+    if (importId === '_legacy') {
+      const legacyDays = DATA.days.filter(d => !d._importId);
+      if (!confirm(`Delete "Previous data"? This will remove ${legacyDays.length} day${legacyDays.length !== 1 ? 's' : ''} of data.`)) return;
+
+      DATA.days = DATA.days.filter(d => d._importId);
+      saveData();
+      renderImportsList();
+      render();
+      return;
+    }
+
+    const imp = (DATA.imports || []).find(i => i.id === importId);
+    if (!imp) return;
+
+    const dayCount = DATA.days.filter(d => d._importId === importId).length;
+    if (!confirm(`Delete "${imp.name}"? This will remove ${dayCount} day${dayCount !== 1 ? 's' : ''} of data.`)) return;
+
+    // Remove days from this import
+    DATA.days = DATA.days.filter(d => d._importId !== importId);
+    // Remove the import record
+    DATA.imports = (DATA.imports || []).filter(i => i.id !== importId);
+
+    saveData();
+    renderImportsList();
+    render();
+  }
+
+  function openProfileModal() {
+    const modal = document.getElementById('profile-modal');
+    modal.classList.remove('hidden');
+    // Update profile values from DATA
+    const t = DATA.targets || DEFAULT_TARGETS;
+    const p = DATA.profile || DEFAULT_PROFILE;
+
+    // Basic stats
+    document.getElementById('profile-height').textContent = p.height;
+    document.getElementById('profile-starting-weight').textContent = `${p.startingWeight || p.weight || 180} lb`;
+
+    // Target weight
+    const targetWeight = p.targetWeight || [165, 170];
+    document.getElementById('profile-target-weight').textContent = `${targetWeight[0]}–${targetWeight[1]}`;
+
+    // Weight history and current weight
+    const weightHistory = p.weightHistory || [];
+    const startingWeight = p.startingWeight || p.weight || 180;
+    const currentWeight = weightHistory.length > 0
+      ? weightHistory[weightHistory.length - 1].weight
+      : startingWeight;
+
+    document.getElementById('profile-current-weight').textContent = currentWeight;
+
+    // Weight change from start
+    const weightChange = currentWeight - startingWeight;
+    const changeEl = document.getElementById('profile-weight-change');
+    if (weightChange !== 0) {
+      const sign = weightChange > 0 ? '+' : '';
+      const color = weightChange < 0 ? 'text-green-600' : 'text-red-500';
+      changeEl.textContent = `${sign}${weightChange.toFixed(1)} lb`;
+      changeEl.className = `text-sm font-medium ${color}`;
+    } else {
+      changeEl.textContent = '—';
+      changeEl.className = 'text-sm font-medium text-neutral-400';
+    }
+
+    // Weight to goal
+    const midTarget = (targetWeight[0] + targetWeight[1]) / 2;
+    const toGoal = currentWeight - midTarget;
+    document.getElementById('profile-weight-to-goal').textContent = toGoal > 0
+      ? `${toGoal.toFixed(0)} lb`
+      : 'At goal!';
+
+    // Weight chart
+    const chartContainer = document.getElementById('profile-weight-chart-container');
+    const chartCanvas = document.getElementById('profile-weight-chart');
+    const emptyEl = document.getElementById('profile-weight-empty');
+
+    // Destroy existing chart if any
+    if (window.profileWeightChart) {
+      window.profileWeightChart.destroy();
+      window.profileWeightChart = null;
+    }
+
+    if (weightHistory.length > 0) {
+      chartContainer.classList.remove('hidden');
+      emptyEl.classList.add('hidden');
+
+      const weights = weightHistory.map(w => w.weight);
+      const labels = weightHistory.map(w => {
+        const d = new Date(w.date + 'T00:00:00');
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      });
+
+      window.profileWeightChart = new Chart(chartCanvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Weight',
+              data: weights,
+              borderColor: '#10b981',
+              tension: 0.4,
+              pointRadius: 0,
+              pointHoverRadius: 6,
+              pointHoverBackgroundColor: '#10b981',
+              pointHoverBorderColor: '#fff',
+              pointHoverBorderWidth: 2,
+              borderWidth: 3,
+              fill: false
+            },
+            {
+              label: 'Target',
+              data: Array(weights.length).fill((targetWeight[0] + targetWeight[1]) / 2),
+              borderColor: '#a3a3a3',
+              borderWidth: 2,
+              borderDash: [4, 4],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#fff',
+              titleColor: '#171717',
+              bodyColor: '#525252',
+              borderColor: '#e5e5e5',
+              borderWidth: 1,
+              padding: 10,
+              titleFont: { size: 12, weight: '600' },
+              bodyFont: { size: 12 },
+              cornerRadius: 8,
+              displayColors: false,
+              callbacks: {
+                label: (ctx) => ctx.datasetIndex === 0 ? ctx.raw + ' lb' : 'Target: ' + ctx.raw + ' lb'
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              border: { display: false },
+              ticks: { font: { size: 10 }, color: '#a3a3a3', padding: 4 }
+            },
+            y: { display: false }
+          }
+        }
+      });
+    } else {
+      chartContainer.classList.add('hidden');
+      emptyEl.classList.remove('hidden');
+    }
+
+    // Nutrition targets
+    document.getElementById('profile-cal').textContent = `${t.cal[0].toLocaleString()}–${t.cal[1].toLocaleString()}`;
+    document.getElementById('profile-protein').textContent = `${t.protein[0]}–${t.protein[1]}g`;
+    document.getElementById('profile-carbs').textContent = `${t.carbs[0]}–${t.carbs[1]}g`;
+    document.getElementById('profile-fat').textContent = `${t.fat[0]}–${t.fat[1]}g`;
+  }
+
+  function closeProfileModal() {
+    document.getElementById('profile-modal').classList.add('hidden');
+  }
+
+  // Known fields the UI renders (including internal fields)
+  const KNOWN_DAY_FIELDS = ['date', 'meals', 'totals', 'workout', 'notes', '_extra', '_unknownFields', '_week', '_weekDateRange', 'weight', 'day', 'dayOfWeek', 'nutrition', 'tdee', 'deficit', 'targetDeficit'];
+  const KNOWN_MEAL_FIELDS = ['item', 'cal', 'protein', 'carbs', 'fat'];
+  const KNOWN_TOTALS_FIELDS = ['cal', 'protein', 'carbs', 'fat'];
+  const KNOWN_WORKOUT_FIELDS = ['type', 'duration', 'caloriesBurned', 'exercises', 'volume', 'activity'];
+  const KNOWN_EXERCISE_FIELDS = ['name', 'weight', 'reps', 'sets', 'pr', 'distance', 'duration', 'calories', 'assistWeight'];
+
+  function findUnknownFields(obj, knownFields, path = '') {
+    if (!obj || typeof obj !== 'object') return [];
+    const unknown = [];
+    for (const key of Object.keys(obj)) {
+      if (!knownFields.includes(key)) {
+        unknown.push(path ? `${path}.${key}` : key);
+      }
+    }
+    return unknown;
+  }
+
+  function analyzeDay(day) {
+    const unknown = [];
+
+    // Check day-level fields
+    unknown.push(...findUnknownFields(day, KNOWN_DAY_FIELDS));
+
+    // Check totals fields
+    if (day.totals) {
+      unknown.push(...findUnknownFields(day.totals, KNOWN_TOTALS_FIELDS, 'totals'));
+    }
+
+    // Check meal fields
+    if (day.meals) {
+      day.meals.forEach((meal, i) => {
+        unknown.push(...findUnknownFields(meal, KNOWN_MEAL_FIELDS, `meals[${i}]`));
+      });
+    }
+
+    // Check workout fields
+    if (day.workout) {
+      unknown.push(...findUnknownFields(day.workout, KNOWN_WORKOUT_FIELDS, 'workout'));
+      if (day.workout.exercises) {
+        day.workout.exercises.forEach((ex, i) => {
+          unknown.push(...findUnknownFields(ex, KNOWN_EXERCISE_FIELDS, `workout.exercises[${i}]`));
+        });
+      }
+    }
+
+    return unknown;
+  }
+
+  // Normalize different JSON formats to our internal format
+  function normalizeDay(day, weekNumber = null, weekDateRange = null) {
+    const normalized = { ...day };
+
+    // Map nutrition -> totals with field name changes
+    if (day.nutrition && !day.totals) {
+      normalized.totals = {
+        cal: day.nutrition.calories,
+        protein: day.nutrition.protein,
+        carbs: day.nutrition.carbs,
+        fat: day.nutrition.fat
+      };
+      // Keep extra nutrition fields in _extra
+      if (day.nutrition.sugar !== undefined) {
+        normalized._extra = normalized._extra || {};
+        normalized._extra.sugar = day.nutrition.sugar;
+      }
+      delete normalized.nutrition;
+    }
+
+    // Store week number from source data
+    if (weekNumber !== null) {
+      normalized._week = weekNumber;
+      if (weekDateRange) {
+        normalized._weekDateRange = weekDateRange;
+      }
+    }
+
+    // Store extra day-level fields
+    const extraDayFields = ['day', 'dayOfWeek', 'tdee', 'deficit', 'targetDeficit'];
+    for (const field of extraDayFields) {
+      if (day[field] !== undefined) {
+        normalized._extra = normalized._extra || {};
+        normalized._extra[field] = day[field];
+        delete normalized[field];
+      }
+    }
+
+    return normalized;
+  }
+
+  // Parse targets from different formats
+  function parseTargets(targets) {
+    const result = {};
+
+    // Handle {min, max} object format
+    const fieldMap = { calories: 'cal', protein: 'protein', carbs: 'carbs', fat: 'fat' };
+
+    for (const [key, mappedKey] of Object.entries(fieldMap)) {
+      if (targets[key]) {
+        if (typeof targets[key] === 'object' && targets[key].min !== undefined) {
+          result[mappedKey] = [targets[key].min, targets[key].max];
+        } else if (Array.isArray(targets[key])) {
+          result[mappedKey] = targets[key];
+        }
+      }
+      // Also check already-mapped keys (cal instead of calories)
+      if (targets[mappedKey]) {
+        if (Array.isArray(targets[mappedKey])) {
+          result[mappedKey] = targets[mappedKey];
+        }
+      }
+    }
+
+    return result;
+  }
+
+  function addDay() {
+    const input = document.getElementById('json-input').value.trim();
+    const importNameInput = document.getElementById('import-name');
+    const importName = importNameInput ? importNameInput.value.trim() : '';
+    const errorEl = document.getElementById('json-error');
+
+    try {
+      const parsed = JSON.parse(input);
+      let daysToAdd = [];
+      let updatedTargets = false;
+      const allUnknownFields = [];
+      let weeksData = null;
+      let extraRootData = {};
+
+      // Generate import ID
+      const importId = 'import_' + Date.now();
+
+      // Detect format
+      if (parsed.weeks && Array.isArray(parsed.weeks)) {
+        // Weeks format - flatten to days, preserving week info
+        weeksData = parsed.weeks;
+        for (const week of parsed.weeks) {
+          if (week.days) {
+            // Tag each day with its week number
+            for (const day of week.days) {
+              day._sourceWeek = week.weekNumber;
+              day._sourceWeekDateRange = week.dateRange;
+            }
+            daysToAdd.push(...week.days);
+          }
+          // Collect week-level extra data
+          const weekExtra = { ...week };
+          delete weekExtra.days;
+          if (Object.keys(weekExtra).length > 0) {
+            extraRootData[`week_${week.weekNumber || 'unknown'}`] = weekExtra;
+          }
+        }
+
+        // Collect root-level extra data
+        const knownRootFields = ['weeks', 'targets', 'userProfile'];
+        for (const key of Object.keys(parsed)) {
+          if (!knownRootFields.includes(key)) {
+            extraRootData[key] = parsed[key];
+            allUnknownFields.push(`(root).${key}`);
+          }
+        }
+
+        // Import user profile if provided
+        if (parsed.userProfile) {
+          DATA.profile = DATA.profile || { ...DEFAULT_PROFILE };
+          const up = parsed.userProfile;
+          if (up.height) DATA.profile.height = up.height;
+          if (up.startingWeight) DATA.profile.startingWeight = up.startingWeight;
+          if (up.targetWeight) DATA.profile.targetWeight = up.targetWeight;
+          if (up.targetWeightLoss) {
+            // Parse "10-15 lbs" format to [165, 170] target
+            const match = up.targetWeightLoss.match(/(\d+)-(\d+)/);
+            if (match && up.startingWeight) {
+              DATA.profile.targetWeight = [
+                up.startingWeight - parseInt(match[2]),
+                up.startingWeight - parseInt(match[1])
+              ];
+            }
+          }
+          if (up.goals) DATA.profile.goals = up.goals;
+          if (up.weightHistory) DATA.profile.weightHistory = up.weightHistory;
+        }
+
+        // Store weeks metadata
+        if (Object.keys(extraRootData).length > 0) {
+          DATA._meta = DATA._meta || {};
+          DATA._meta = { ...DATA._meta, ...extraRootData };
+        }
+
+      } else if (parsed.days && Array.isArray(parsed.days)) {
+        // Days array format
+        daysToAdd = parsed.days;
+
+        const knownTopLevel = ['days', 'targets'];
+        for (const key of Object.keys(parsed)) {
+          if (!knownTopLevel.includes(key)) {
+            allUnknownFields.push(`(root).${key}`);
+            extraRootData[key] = parsed[key];
+          }
+        }
+
+        if (Object.keys(extraRootData).length > 0) {
+          DATA._meta = DATA._meta || {};
+          DATA._meta = { ...DATA._meta, ...extraRootData };
+        }
+
+      } else if (parsed.date) {
+        // Single day format
+        daysToAdd = [parsed];
+      } else {
+        throw new Error('Unrecognized format. Expected: single day with "date", or export with "days" or "weeks" array.');
+      }
+
+      // Update targets if provided
+      if (parsed.targets) {
+        const newTargets = parseTargets(parsed.targets);
+        DATA.targets = { ...DATA.targets, ...newTargets };
+        updatedTargets = true;
+
+        // Store extra target fields
+        const knownTargetFields = ['calories', 'cal', 'protein', 'carbs', 'fat'];
+        for (const key of Object.keys(parsed.targets)) {
+          if (!knownTargetFields.includes(key)) {
+            DATA._meta = DATA._meta || {};
+            DATA._meta.extraTargets = DATA._meta.extraTargets || {};
+            DATA._meta.extraTargets[key] = parsed.targets[key];
+          }
+        }
+      }
+
+      // Normalize and add each day
+      for (let day of daysToAdd) {
+        const sourceWeek = day._sourceWeek;
+        const sourceWeekDateRange = day._sourceWeekDateRange;
+        delete day._sourceWeek;
+        delete day._sourceWeekDateRange;
+        day = normalizeDay(day, sourceWeek, sourceWeekDateRange);
+
+        if (!day.date) throw new Error('Day missing "date" field');
+        if (!day.totals) throw new Error(`Day ${day.date} missing "totals"/"nutrition" field`);
+
+        // Analyze for unknown fields (after normalization)
+        const unknownInDay = analyzeDay(day);
+        if (unknownInDay.length > 0) {
+          day._unknownFields = unknownInDay;
+          allUnknownFields.push(...unknownInDay.map(f => `${day.date}: ${f}`));
+        }
+
+        // Tag with import ID
+        day._importId = importId;
+
+        // Add or replace
+        const existingIndex = DATA.days.findIndex(d => d.date === day.date);
+        if (existingIndex >= 0) {
+          DATA.days[existingIndex] = day;
+        } else {
+          DATA.days.push(day);
+        }
+      }
+
+      // Sort by date
+      DATA.days.sort((a, b) => a.date.localeCompare(b.date));
+
+      // Build weight history from daily weight entries
+      const weightEntries = DATA.days
+        .filter(d => d.weight !== undefined)
+        .map(d => ({ date: d.date, weight: d.weight }));
+      if (weightEntries.length > 0) {
+        DATA.profile = DATA.profile || { ...DEFAULT_PROFILE };
+        DATA.profile.weightHistory = weightEntries;
+      }
+
+      // Create import record
+      const sortedDays = [...daysToAdd].sort((a, b) => a.date.localeCompare(b.date));
+      const firstDate = sortedDays[0]?.date;
+      const lastDate = sortedDays[sortedDays.length - 1]?.date;
+      const dateRange = firstDate === lastDate
+        ? formatDate(firstDate)
+        : `${formatDate(firstDate)} – ${formatDate(lastDate)}`;
+
+      const defaultName = weeksData
+        ? `Week${weeksData.length > 1 ? 's' : ''} ${weeksData.map(w => w.weekNumber).join(', ')}`
+        : dateRange;
+
+      DATA.imports = DATA.imports || [];
+      DATA.imports.push({
+        id: importId,
+        name: importName || defaultName,
+        importedAt: new Date().toISOString(),
+        dateRange: dateRange,
+        dayCount: daysToAdd.length
+      });
+
+      // Save
+      saveData();
+
+      // Select the most recent added day
+      selectedDate = daysToAdd[daysToAdd.length - 1].date;
+
+      // Build success message
+      const messages = [];
+      if (weeksData) {
+        messages.push(`Imported ${weeksData.length} week(s), ${daysToAdd.length} days`);
+      } else if (daysToAdd.length === 1) {
+        messages.push(`Added ${daysToAdd[0].date}`);
+      } else {
+        messages.push(`Added ${daysToAdd.length} days`);
+      }
+      if (updatedTargets) {
+        messages.push('Updated targets');
+      }
+
+      renderDateNav();
+      renderDashboard();
+      closeModal();
+
+      // Show summary
+      const extraCount = Object.keys(extraRootData).length;
+      if (allUnknownFields.length > 0 || extraCount > 0) {
+        setTimeout(() => {
+          let msg = `Import complete: ${messages.join(', ')}\n\n`;
+          if (extraCount > 0) {
+            msg += `Extra data stored (${extraCount} sections):\n• ${Object.keys(extraRootData).slice(0, 8).join('\n• ')}${Object.keys(extraRootData).length > 8 ? '\n• ...' : ''}\n\n`;
+          }
+          if (allUnknownFields.length > 0) {
+            msg += `Fields not displayed in day view:\n• ${allUnknownFields.slice(0, 10).join('\n• ')}${allUnknownFields.length > 10 ? `\n• ... and ${allUnknownFields.length - 10} more` : ''}`;
+          }
+          alert(msg);
+        }, 100);
+      }
+    } catch (e) {
+      errorEl.textContent = e.message;
+      errorEl.classList.remove('hidden');
+    }
+  }
+
+  function deleteDay(date) {
+    if (!confirm('Delete this day?')) return;
+
+    DATA.days = DATA.days.filter(d => d.date !== date);
+    saveData();
+
+    // Select another date or clear
+    selectedDate = DATA.days[DATA.days.length - 1]?.date || null;
+    renderDateNav();
+    renderDashboard();
+  }
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Enter' && e.metaKey && !document.getElementById('modal').classList.contains('hidden')) {
+      addDay();
+    }
+  });
+
+  // Initialize selections
+  if (DATA.days.length) {
+    selectedMonth = getMonth(DATA.days[DATA.days.length - 1].date);
+    const weeks = getWeeks();
+    if (weeks.length) selectedWeek = weeks[weeks.length - 1][0];
+    selectedDate = DATA.days[DATA.days.length - 1].date;
+  }
+
+  // Initial render
+  renderDateNav();
+  renderDashboard();
+</script>
+
+</body>
+</html>

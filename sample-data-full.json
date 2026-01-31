@@ -1,0 +1,606 @@
+{
+  "targets": {
+    "cal": [2200, 2500],
+    "protein": [160, 180],
+    "carbs": [240, 280],
+    "fat": [65, 80]
+  },
+  "profile": {
+    "height": "5'11\"",
+    "startingWeight": 186,
+    "targetWeight": [170, 175],
+    "goal": "Fat loss while building strength"
+  },
+  "days": [
+    {
+      "date": "2025-11-01",
+      "dayOfWeek": "Saturday",
+      "nutrition": {"calories": 2650, "protein": 145, "carbs": 320, "fat": 88, "sugar": 72},
+      "weight": 186.2,
+      "tdee": 2520,
+      "deficit": 130,
+      "notes": "Starting fresh this month"
+    },
+    {
+      "date": "2025-11-02",
+      "dayOfWeek": "Sunday",
+      "nutrition": {"calories": 2480, "protein": 158, "carbs": 285, "fat": 78, "sugar": 65},
+      "workout": {"type": "Push Day", "duration": 50, "caloriesBurned": 350, "volume": 10200, "exercises": [
+        {"name": "Bench press", "weight": 155, "reps": 8, "sets": 4},
+        {"name": "Overhead press", "weight": 75, "reps": 10, "sets": 3},
+        {"name": "Tricep pushdown", "weight": 40, "reps": 12, "sets": 3}
+      ]},
+      "tdee": 2680,
+      "deficit": -200
+    },
+    {
+      "date": "2025-11-04",
+      "dayOfWeek": "Tuesday",
+      "nutrition": {"calories": 2320, "protein": 162, "carbs": 248, "fat": 72, "sugar": 52},
+      "workout": {"type": "Pull Day", "duration": 55, "caloriesBurned": 380, "volume": 11500, "exercises": [
+        {"name": "Deadlift", "weight": 225, "reps": 5, "sets": 4},
+        {"name": "Lat pulldown", "weight": 100, "reps": 10, "sets": 4},
+        {"name": "Barbell curl", "weight": 55, "reps": 10, "sets": 3}
+      ]},
+      "weight": 185.8,
+      "tdee": 2750,
+      "deficit": -430
+    },
+    {
+      "date": "2025-11-06",
+      "dayOfWeek": "Thursday",
+      "nutrition": {"calories": 2400, "protein": 168, "carbs": 265, "fat": 75, "sugar": 58},
+      "workout": {"type": "Leg Day", "duration": 60, "caloriesBurned": 450, "volume": 15200, "exercises": [
+        {"name": "Squat", "weight": 185, "reps": 8, "sets": 4},
+        {"name": "Leg press", "weight": 320, "reps": 12, "sets": 3},
+        {"name": "Leg curl", "weight": 80, "reps": 12, "sets": 3}
+      ]},
+      "tdee": 2820,
+      "deficit": -420
+    },
+    {
+      "date": "2025-11-08",
+      "dayOfWeek": "Saturday",
+      "nutrition": {"calories": 2580, "protein": 152, "carbs": 298, "fat": 82, "sugar": 68},
+      "workout": {"type": "Cardio", "duration": 40, "caloriesBurned": 380, "exercises": [
+        {"name": "Running", "distance": 3.5, "duration": 32, "calories": 340},
+        {"name": "Stretching", "duration": 8}
+      ]},
+      "weight": 185.2,
+      "tdee": 2720,
+      "deficit": -140
+    },
+    {
+      "date": "2025-11-10",
+      "dayOfWeek": "Monday",
+      "nutrition": {"calories": 2350, "protein": 165, "carbs": 255, "fat": 74, "sugar": 50},
+      "workout": {"type": "Push Day", "duration": 52, "caloriesBurned": 360, "volume": 10800, "exercises": [
+        {"name": "Bench press", "weight": 160, "reps": 8, "sets": 4, "pr": true},
+        {"name": "Overhead press", "weight": 80, "reps": 10, "sets": 3},
+        {"name": "Incline dumbbell press", "weight": 50, "reps": 10, "sets": 3}
+      ]},
+      "tdee": 2780,
+      "deficit": -430,
+      "notes": "Bench moving up!"
+    },
+    {
+      "date": "2025-11-12",
+      "dayOfWeek": "Wednesday",
+      "nutrition": {"calories": 2280, "protein": 170, "carbs": 238, "fat": 70, "sugar": 48},
+      "workout": {"type": "Pull Day", "duration": 58, "caloriesBurned": 395, "volume": 12200, "exercises": [
+        {"name": "Deadlift", "weight": 235, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Lat pulldown", "weight": 105, "reps": 10, "sets": 4},
+        {"name": "Seated cable row", "weight": 120, "reps": 10, "sets": 3}
+      ]},
+      "weight": 184.6,
+      "tdee": 2800,
+      "deficit": -520,
+      "notes": "Deadlift PR - 235!"
+    },
+    {
+      "date": "2025-11-14",
+      "dayOfWeek": "Friday",
+      "nutrition": {"calories": 2420, "protein": 172, "carbs": 268, "fat": 76, "sugar": 55},
+      "workout": {"type": "Leg Day", "duration": 62, "caloriesBurned": 470, "volume": 16100, "exercises": [
+        {"name": "Squat", "weight": 195, "reps": 8, "sets": 4, "pr": true},
+        {"name": "Romanian deadlift", "weight": 155, "reps": 10, "sets": 3},
+        {"name": "Leg extension", "weight": 100, "reps": 12, "sets": 3}
+      ]},
+      "tdee": 2850,
+      "deficit": -430
+    },
+    {
+      "date": "2025-11-16",
+      "dayOfWeek": "Sunday",
+      "nutrition": {"calories": 2680, "protein": 148, "carbs": 325, "fat": 88, "sugar": 78},
+      "weight": 184.0,
+      "tdee": 2480,
+      "deficit": 200,
+      "notes": "Rest day - down 2 lbs!"
+    },
+    {
+      "date": "2025-11-18",
+      "dayOfWeek": "Tuesday",
+      "nutrition": {"calories": 2380, "protein": 168, "carbs": 262, "fat": 74, "sugar": 52},
+      "workout": {"type": "Push Day", "duration": 55, "caloriesBurned": 375, "volume": 11400, "exercises": [
+        {"name": "Bench press", "weight": 165, "reps": 8, "sets": 4, "pr": true},
+        {"name": "Overhead press", "weight": 85, "reps": 8, "sets": 3, "pr": true},
+        {"name": "Dips", "weight": 0, "reps": 12, "sets": 3}
+      ]},
+      "tdee": 2790,
+      "deficit": -410,
+      "notes": "Double PR day!"
+    },
+    {
+      "date": "2025-11-20",
+      "dayOfWeek": "Thursday",
+      "nutrition": {"calories": 2300, "protein": 165, "carbs": 248, "fat": 72, "sugar": 50},
+      "workout": {"type": "Pull Day", "duration": 60, "caloriesBurned": 410, "volume": 13000, "exercises": [
+        {"name": "Deadlift", "weight": 245, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Pull-ups", "weight": 0, "reps": 6, "sets": 4},
+        {"name": "Face pulls", "weight": 35, "reps": 15, "sets": 3}
+      ]},
+      "weight": 183.4,
+      "tdee": 2820,
+      "deficit": -520
+    },
+    {
+      "date": "2025-11-22",
+      "dayOfWeek": "Saturday",
+      "nutrition": {"calories": 2450, "protein": 170, "carbs": 275, "fat": 78, "sugar": 58},
+      "workout": {"type": "Leg Day", "duration": 65, "caloriesBurned": 490, "volume": 17200, "exercises": [
+        {"name": "Squat", "weight": 200, "reps": 8, "sets": 4, "pr": true},
+        {"name": "Leg press", "weight": 340, "reps": 12, "sets": 3},
+        {"name": "Calf raises", "weight": 160, "reps": 15, "sets": 4}
+      ]},
+      "tdee": 2870,
+      "deficit": -420
+    },
+    {
+      "date": "2025-11-24",
+      "dayOfWeek": "Monday",
+      "nutrition": {"calories": 2550, "protein": 162, "carbs": 295, "fat": 82, "sugar": 65},
+      "workout": {"type": "Cycling", "duration": 45, "caloriesBurned": 400, "exercises": [
+        {"name": "Cycling", "distance": 12, "duration": 45, "calories": 400}
+      ]},
+      "weight": 182.8,
+      "tdee": 2750,
+      "deficit": -200
+    },
+    {
+      "date": "2025-11-26",
+      "dayOfWeek": "Wednesday",
+      "nutrition": {"calories": 2320, "protein": 168, "carbs": 252, "fat": 72, "sugar": 52},
+      "workout": {"type": "Push Day", "duration": 55, "caloriesBurned": 380, "volume": 11900, "exercises": [
+        {"name": "Bench press", "weight": 170, "reps": 6, "sets": 4, "pr": true},
+        {"name": "Overhead press", "weight": 85, "reps": 10, "sets": 3},
+        {"name": "Cable flyes", "weight": 25, "reps": 12, "sets": 3}
+      ]},
+      "tdee": 2800,
+      "deficit": -480
+    },
+    {
+      "date": "2025-11-28",
+      "dayOfWeek": "Friday",
+      "nutrition": {"calories": 3200, "protein": 175, "carbs": 380, "fat": 110, "sugar": 95},
+      "weight": 183.2,
+      "tdee": 2480,
+      "deficit": 720,
+      "notes": "Thanksgiving - enjoyed the day!"
+    },
+    {
+      "date": "2025-11-30",
+      "dayOfWeek": "Sunday",
+      "nutrition": {"calories": 2280, "protein": 165, "carbs": 245, "fat": 72, "sugar": 48},
+      "workout": {"type": "Pull Day", "duration": 58, "caloriesBurned": 400, "volume": 13500, "exercises": [
+        {"name": "Deadlift", "weight": 250, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Lat pulldown", "weight": 110, "reps": 10, "sets": 4, "pr": true},
+        {"name": "Barbell row", "weight": 135, "reps": 8, "sets": 4}
+      ]},
+      "weight": 182.4,
+      "tdee": 2820,
+      "deficit": -540,
+      "notes": "Back on track after Thanksgiving"
+    },
+    {
+      "date": "2025-12-02",
+      "dayOfWeek": "Tuesday",
+      "nutrition": {"calories": 2380, "protein": 170, "carbs": 262, "fat": 74, "sugar": 54},
+      "workout": {"type": "Leg Day", "duration": 65, "caloriesBurned": 500, "volume": 18000, "exercises": [
+        {"name": "Squat", "weight": 205, "reps": 8, "sets": 4, "pr": true},
+        {"name": "Bulgarian split squat", "weight": 40, "reps": 10, "sets": 3},
+        {"name": "Leg curl", "weight": 85, "reps": 12, "sets": 3}
+      ]},
+      "tdee": 2880,
+      "deficit": -500
+    },
+    {
+      "date": "2025-12-04",
+      "dayOfWeek": "Thursday",
+      "nutrition": {"calories": 2420, "protein": 175, "carbs": 268, "fat": 76, "sugar": 56},
+      "workout": {"type": "Push Day", "duration": 58, "caloriesBurned": 390, "volume": 12400, "exercises": [
+        {"name": "Bench press", "weight": 170, "reps": 8, "sets": 4},
+        {"name": "Overhead press", "weight": 90, "reps": 8, "sets": 3, "pr": true},
+        {"name": "Incline dumbbell press", "weight": 55, "reps": 10, "sets": 3}
+      ]},
+      "weight": 181.8,
+      "tdee": 2810,
+      "deficit": -390,
+      "notes": "OHP at 90 lbs!"
+    },
+    {
+      "date": "2025-12-06",
+      "dayOfWeek": "Saturday",
+      "nutrition": {"calories": 2580, "protein": 158, "carbs": 302, "fat": 82, "sugar": 68},
+      "workout": {"type": "HIIT", "duration": 30, "caloriesBurned": 380, "exercises": [
+        {"name": "HIIT circuits", "duration": 25, "calories": 350},
+        {"name": "Cooldown", "duration": 5, "calories": 30}
+      ]},
+      "tdee": 2720,
+      "deficit": -140
+    },
+    {
+      "date": "2025-12-08",
+      "dayOfWeek": "Monday",
+      "nutrition": {"calories": 2350, "protein": 168, "carbs": 258, "fat": 74, "sugar": 52},
+      "workout": {"type": "Pull Day", "duration": 60, "caloriesBurned": 420, "volume": 14200, "exercises": [
+        {"name": "Deadlift", "weight": 255, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Pull-ups", "weight": 0, "reps": 7, "sets": 4},
+        {"name": "Seated cable row", "weight": 130, "reps": 10, "sets": 3}
+      ]},
+      "weight": 181.2,
+      "tdee": 2840,
+      "deficit": -490
+    },
+    {
+      "date": "2025-12-10",
+      "dayOfWeek": "Wednesday",
+      "nutrition": {"calories": 2280, "protein": 165, "carbs": 245, "fat": 72, "sugar": 48},
+      "workout": {"type": "Leg Day", "duration": 68, "caloriesBurned": 520, "volume": 18800, "exercises": [
+        {"name": "Squat", "weight": 210, "reps": 6, "sets": 4, "pr": true},
+        {"name": "Romanian deadlift", "weight": 165, "reps": 10, "sets": 3},
+        {"name": "Leg extension", "weight": 110, "reps": 12, "sets": 3}
+      ]},
+      "tdee": 2890,
+      "deficit": -610,
+      "notes": "Squat at 210!"
+    },
+    {
+      "date": "2025-12-12",
+      "dayOfWeek": "Friday",
+      "nutrition": {"calories": 2450, "protein": 172, "carbs": 275, "fat": 78, "sugar": 58},
+      "workout": {"type": "Push Day", "duration": 55, "caloriesBurned": 385, "volume": 12800, "exercises": [
+        {"name": "Bench press", "weight": 175, "reps": 6, "sets": 4, "pr": true},
+        {"name": "Overhead press", "weight": 90, "reps": 10, "sets": 3},
+        {"name": "Tricep pushdown", "weight": 45, "reps": 12, "sets": 3}
+      ]},
+      "weight": 180.6,
+      "tdee": 2800,
+      "deficit": -350
+    },
+    {
+      "date": "2025-12-14",
+      "dayOfWeek": "Sunday",
+      "nutrition": {"calories": 2680, "protein": 155, "carbs": 318, "fat": 85, "sugar": 72},
+      "workout": {"type": "Swimming", "duration": 45, "caloriesBurned": 400, "exercises": [
+        {"name": "Lap swimming", "duration": 45, "distance": 1.3, "calories": 400}
+      ]},
+      "tdee": 2740,
+      "deficit": -60
+    },
+    {
+      "date": "2025-12-16",
+      "dayOfWeek": "Tuesday",
+      "nutrition": {"calories": 2320, "protein": 168, "carbs": 252, "fat": 72, "sugar": 50},
+      "workout": {"type": "Pull Day", "duration": 62, "caloriesBurned": 430, "volume": 14800, "exercises": [
+        {"name": "Deadlift", "weight": 260, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Lat pulldown", "weight": 115, "reps": 10, "sets": 4, "pr": true},
+        {"name": "Face pulls", "weight": 40, "reps": 15, "sets": 3}
+      ]},
+      "weight": 180.0,
+      "tdee": 2860,
+      "deficit": -540,
+      "notes": "Under 180 soon!"
+    },
+    {
+      "date": "2025-12-18",
+      "dayOfWeek": "Thursday",
+      "nutrition": {"calories": 2400, "protein": 170, "carbs": 268, "fat": 76, "sugar": 55},
+      "workout": {"type": "Leg Day", "duration": 65, "caloriesBurned": 510, "volume": 19200, "exercises": [
+        {"name": "Squat", "weight": 215, "reps": 6, "sets": 4, "pr": true},
+        {"name": "Leg press", "weight": 350, "reps": 12, "sets": 3},
+        {"name": "Walking lunges", "weight": 35, "reps": 12, "sets": 3}
+      ]},
+      "tdee": 2890,
+      "deficit": -490
+    },
+    {
+      "date": "2025-12-20",
+      "dayOfWeek": "Saturday",
+      "nutrition": {"calories": 2550, "protein": 162, "carbs": 295, "fat": 82, "sugar": 65},
+      "workout": {"type": "Push Day", "duration": 58, "caloriesBurned": 395, "volume": 13200, "exercises": [
+        {"name": "Bench press", "weight": 175, "reps": 8, "sets": 4},
+        {"name": "Overhead press", "weight": 95, "reps": 8, "sets": 3, "pr": true},
+        {"name": "Dips", "weight": 15, "reps": 10, "sets": 3}
+      ]},
+      "weight": 179.4,
+      "tdee": 2810,
+      "deficit": -260
+    },
+    {
+      "date": "2025-12-22",
+      "dayOfWeek": "Monday",
+      "nutrition": {"calories": 2380, "protein": 168, "carbs": 262, "fat": 74, "sugar": 54},
+      "workout": {"type": "Cardio", "duration": 35, "caloriesBurned": 340, "exercises": [
+        {"name": "Running", "distance": 3.2, "duration": 30, "calories": 310},
+        {"name": "Stretching", "duration": 5}
+      ]},
+      "tdee": 2700,
+      "deficit": -320
+    },
+    {
+      "date": "2025-12-24",
+      "dayOfWeek": "Wednesday",
+      "nutrition": {"calories": 2850, "protein": 158, "carbs": 345, "fat": 95, "sugar": 88},
+      "weight": 179.8,
+      "tdee": 2480,
+      "deficit": 370,
+      "notes": "Christmas Eve dinner"
+    },
+    {
+      "date": "2025-12-25",
+      "dayOfWeek": "Thursday",
+      "nutrition": {"calories": 3100, "protein": 165, "carbs": 375, "fat": 105, "sugar": 95},
+      "tdee": 2480,
+      "deficit": 620,
+      "notes": "Merry Christmas!"
+    },
+    {
+      "date": "2025-12-27",
+      "dayOfWeek": "Saturday",
+      "nutrition": {"calories": 2420, "protein": 170, "carbs": 268, "fat": 76, "sugar": 56},
+      "workout": {"type": "Pull Day", "duration": 60, "caloriesBurned": 420, "volume": 14500, "exercises": [
+        {"name": "Deadlift", "weight": 265, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Pull-ups", "weight": 0, "reps": 8, "sets": 4},
+        {"name": "Barbell row", "weight": 145, "reps": 8, "sets": 4}
+      ]},
+      "weight": 180.2,
+      "tdee": 2850,
+      "deficit": -430,
+      "notes": "Back at it"
+    },
+    {
+      "date": "2025-12-29",
+      "dayOfWeek": "Monday",
+      "nutrition": {"calories": 2350, "protein": 168, "carbs": 258, "fat": 74, "sugar": 52},
+      "workout": {"type": "Leg Day", "duration": 65, "caloriesBurned": 500, "volume": 19000, "exercises": [
+        {"name": "Squat", "weight": 215, "reps": 8, "sets": 4},
+        {"name": "Bulgarian split squat", "weight": 45, "reps": 10, "sets": 3},
+        {"name": "Leg curl", "weight": 90, "reps": 12, "sets": 3}
+      ]},
+      "tdee": 2880,
+      "deficit": -530
+    },
+    {
+      "date": "2025-12-31",
+      "dayOfWeek": "Wednesday",
+      "nutrition": {"calories": 2780, "protein": 155, "carbs": 328, "fat": 92, "sugar": 82},
+      "weight": 179.2,
+      "tdee": 2520,
+      "deficit": 260,
+      "notes": "NYE - down 7 lbs in 2 months!"
+    },
+    {
+      "date": "2026-01-02",
+      "dayOfWeek": "Friday",
+      "nutrition": {"calories": 2380, "protein": 172, "carbs": 262, "fat": 74, "sugar": 52},
+      "workout": {"type": "Push Day", "duration": 58, "caloriesBurned": 400, "volume": 13600, "exercises": [
+        {"name": "Bench press", "weight": 180, "reps": 6, "sets": 4, "pr": true},
+        {"name": "Overhead press", "weight": 95, "reps": 10, "sets": 3},
+        {"name": "Incline dumbbell press", "weight": 55, "reps": 10, "sets": 3}
+      ]},
+      "weight": 178.8,
+      "tdee": 2820,
+      "deficit": -440,
+      "notes": "New year, new PR - Bench 180!"
+    },
+    {
+      "date": "2026-01-04",
+      "dayOfWeek": "Sunday",
+      "nutrition": {"calories": 2320, "protein": 168, "carbs": 252, "fat": 72, "sugar": 50},
+      "workout": {"type": "Pull Day", "duration": 62, "caloriesBurned": 435, "volume": 15200, "exercises": [
+        {"name": "Deadlift", "weight": 270, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Lat pulldown", "weight": 115, "reps": 10, "sets": 4},
+        {"name": "Seated cable row", "weight": 135, "reps": 10, "sets": 3}
+      ]},
+      "tdee": 2870,
+      "deficit": -550
+    },
+    {
+      "date": "2026-01-06",
+      "dayOfWeek": "Tuesday",
+      "nutrition": {"calories": 2450, "protein": 175, "carbs": 275, "fat": 78, "sugar": 58},
+      "workout": {"type": "Leg Day", "duration": 68, "caloriesBurned": 530, "volume": 20000, "exercises": [
+        {"name": "Squat", "weight": 220, "reps": 6, "sets": 4, "pr": true},
+        {"name": "Romanian deadlift", "weight": 175, "reps": 10, "sets": 3},
+        {"name": "Leg extension", "weight": 115, "reps": 12, "sets": 3}
+      ]},
+      "weight": 178.2,
+      "tdee": 2910,
+      "deficit": -460,
+      "notes": "Squat at 220 - 2 plate goal next!"
+    },
+    {
+      "date": "2026-01-08",
+      "dayOfWeek": "Thursday",
+      "nutrition": {"calories": 2280, "protein": 165, "carbs": 248, "fat": 72, "sugar": 48},
+      "workout": {"type": "HIIT", "duration": 28, "caloriesBurned": 360, "exercises": [
+        {"name": "HIIT circuits", "duration": 23, "calories": 330},
+        {"name": "Cooldown", "duration": 5, "calories": 30}
+      ]},
+      "tdee": 2720,
+      "deficit": -440
+    },
+    {
+      "date": "2026-01-10",
+      "dayOfWeek": "Saturday",
+      "nutrition": {"calories": 2520, "protein": 170, "carbs": 285, "fat": 80, "sugar": 62},
+      "workout": {"type": "Push Day", "duration": 60, "caloriesBurned": 410, "volume": 14000, "exercises": [
+        {"name": "Bench press", "weight": 180, "reps": 8, "sets": 4},
+        {"name": "Overhead press", "weight": 100, "reps": 6, "sets": 3, "pr": true},
+        {"name": "Cable flyes", "weight": 30, "reps": 12, "sets": 3}
+      ]},
+      "weight": 177.6,
+      "tdee": 2830,
+      "deficit": -310,
+      "notes": "OHP finally at 100!"
+    },
+    {
+      "date": "2026-01-12",
+      "dayOfWeek": "Monday",
+      "nutrition": {"calories": 2350, "protein": 168, "carbs": 258, "fat": 74, "sugar": 52},
+      "workout": {"type": "Pull Day", "duration": 60, "caloriesBurned": 425, "volume": 15500, "exercises": [
+        {"name": "Deadlift", "weight": 275, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Pull-ups", "weight": 10, "reps": 6, "sets": 4, "pr": true},
+        {"name": "Face pulls", "weight": 40, "reps": 15, "sets": 3}
+      ]},
+      "tdee": 2860,
+      "deficit": -510,
+      "notes": "Weighted pull-ups!"
+    },
+    {
+      "date": "2026-01-14",
+      "dayOfWeek": "Wednesday",
+      "nutrition": {"calories": 2420, "protein": 172, "carbs": 268, "fat": 76, "sugar": 56},
+      "workout": {"type": "Leg Day", "duration": 70, "caloriesBurned": 540, "volume": 20800, "exercises": [
+        {"name": "Squat", "weight": 225, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Leg press", "weight": 360, "reps": 12, "sets": 3},
+        {"name": "Calf raises", "weight": 180, "reps": 15, "sets": 4}
+      ]},
+      "weight": 177.0,
+      "tdee": 2920,
+      "deficit": -500,
+      "notes": "2 PLATES ON SQUAT!"
+    },
+    {
+      "date": "2026-01-16",
+      "dayOfWeek": "Friday",
+      "nutrition": {"calories": 2550, "protein": 165, "carbs": 295, "fat": 82, "sugar": 65},
+      "workout": {"type": "Cycling", "duration": 50, "caloriesBurned": 450, "exercises": [
+        {"name": "Cycling", "distance": 14, "duration": 50, "calories": 450}
+      ]},
+      "tdee": 2780,
+      "deficit": -230
+    },
+    {
+      "date": "2026-01-18",
+      "dayOfWeek": "Sunday",
+      "nutrition": {"calories": 2380, "protein": 170, "carbs": 262, "fat": 74, "sugar": 54},
+      "workout": {"type": "Push Day", "duration": 58, "caloriesBurned": 405, "volume": 14200, "exercises": [
+        {"name": "Bench press", "weight": 185, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Overhead press", "weight": 100, "reps": 8, "sets": 3},
+        {"name": "Dips", "weight": 25, "reps": 10, "sets": 3}
+      ]},
+      "weight": 176.4,
+      "tdee": 2820,
+      "deficit": -440,
+      "notes": "Bench at 185!"
+    },
+    {
+      "date": "2026-01-20",
+      "dayOfWeek": "Tuesday",
+      "nutrition": {"calories": 2320, "protein": 168, "carbs": 252, "fat": 72, "sugar": 50},
+      "workout": {"type": "Pull Day", "duration": 62, "caloriesBurned": 440, "volume": 16000, "exercises": [
+        {"name": "Deadlift", "weight": 280, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Lat pulldown", "weight": 120, "reps": 10, "sets": 4, "pr": true},
+        {"name": "Barbell row", "weight": 155, "reps": 8, "sets": 4}
+      ]},
+      "tdee": 2880,
+      "deficit": -560
+    },
+    {
+      "date": "2026-01-22",
+      "dayOfWeek": "Thursday",
+      "nutrition": {"calories": 2280, "protein": 165, "carbs": 248, "fat": 72, "sugar": 48},
+      "workout": {"type": "Yoga", "duration": 45, "caloriesBurned": 170, "exercises": [
+        {"name": "Yoga flow", "duration": 45, "calories": 170}
+      ]},
+      "weight": 175.8,
+      "tdee": 2540,
+      "deficit": -260,
+      "notes": "Active recovery"
+    },
+    {
+      "date": "2026-01-24",
+      "dayOfWeek": "Saturday",
+      "nutrition": {"calories": 2480, "protein": 175, "carbs": 278, "fat": 78, "sugar": 58},
+      "workout": {"type": "Leg Day", "duration": 70, "caloriesBurned": 550, "volume": 21500, "exercises": [
+        {"name": "Squat", "weight": 225, "reps": 8, "sets": 4},
+        {"name": "Bulgarian split squat", "weight": 50, "reps": 10, "sets": 3},
+        {"name": "Leg curl", "weight": 95, "reps": 12, "sets": 3}
+      ]},
+      "tdee": 2930,
+      "deficit": -450
+    },
+    {
+      "date": "2026-01-26",
+      "dayOfWeek": "Monday",
+      "nutrition": {"calories": 2340, "protein": 165, "carbs": 245, "fat": 72, "sugar": 48},
+      "workout": {"type": "Push Day", "duration": 55, "caloriesBurned": 380, "volume": 12450, "exercises": [
+        {"name": "Bench press", "weight": 185, "reps": 8, "sets": 4, "pr": true},
+        {"name": "Overhead press", "weight": 95, "reps": 10, "sets": 3},
+        {"name": "Incline dumbbell press", "weight": 60, "reps": 10, "sets": 3},
+        {"name": "Tricep pushdown", "weight": 50, "reps": 12, "sets": 3},
+        {"name": "Lateral raises", "weight": 20, "reps": 15, "sets": 3}
+      ]},
+      "weight": 175.4,
+      "tdee": 2780,
+      "deficit": -440,
+      "notes": "Bench PR at 185 for 8!"
+    },
+    {
+      "date": "2026-01-28",
+      "dayOfWeek": "Wednesday",
+      "nutrition": {"calories": 2520, "protein": 178, "carbs": 290, "fat": 78, "sugar": 62},
+      "workout": {"type": "Pull Day", "duration": 60, "caloriesBurned": 410, "volume": 14200, "exercises": [
+        {"name": "Deadlift", "weight": 285, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Lat pulldown", "weight": 120, "reps": 10, "sets": 4},
+        {"name": "Seated cable row", "weight": 140, "reps": 10, "sets": 3},
+        {"name": "Face pulls", "weight": 40, "reps": 15, "sets": 3},
+        {"name": "Barbell curl", "weight": 65, "reps": 10, "sets": 3}
+      ]},
+      "weight": 174.8,
+      "tdee": 2820,
+      "deficit": -300,
+      "notes": "Deadlift at 285!"
+    },
+    {
+      "date": "2026-01-30",
+      "dayOfWeek": "Friday",
+      "nutrition": {"calories": 2480, "protein": 172, "carbs": 275, "fat": 82, "sugar": 58},
+      "workout": {"type": "Leg Day", "duration": 65, "caloriesBurned": 480, "volume": 18500, "exercises": [
+        {"name": "Squat", "weight": 230, "reps": 5, "sets": 4, "pr": true},
+        {"name": "Romanian deadlift", "weight": 185, "reps": 10, "sets": 3},
+        {"name": "Leg press", "weight": 370, "reps": 12, "sets": 3},
+        {"name": "Leg curl", "weight": 95, "reps": 12, "sets": 3},
+        {"name": "Calf raises", "weight": 185, "reps": 15, "sets": 4}
+      ]},
+      "weight": 174.2,
+      "tdee": 2890,
+      "deficit": -410,
+      "notes": "Squat PR - 230 for 5!"
+    },
+    {
+      "date": "2026-01-31",
+      "dayOfWeek": "Saturday",
+      "nutrition": {"calories": 2350, "protein": 168, "carbs": 258, "fat": 74, "sugar": 52},
+      "workout": {"type": "Cardio", "duration": 40, "caloriesBurned": 380, "exercises": [
+        {"name": "Running", "distance": 3.8, "duration": 35, "calories": 350},
+        {"name": "Stretching", "duration": 5}
+      ]},
+      "tdee": 2720,
+      "deficit": -370,
+      "notes": "12 lbs down in 3 months!"
+    }
+  ]
+}

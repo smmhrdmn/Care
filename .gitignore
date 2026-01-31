@@ -1,0 +1,9 @@
+# Personal data
+health_tracking_weeks_1-3.json
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/

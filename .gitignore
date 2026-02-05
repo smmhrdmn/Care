@@ -1,5 +1,6 @@
-# Personal data
-health_tracking_weeks_1-3.json
+# Personal data - NEVER commit
+data/
+health_tracking*.json
 
 # macOS
 .DS_Store

@@ -38,6 +38,114 @@
     }
     body { font-family: 'Open Runde', system-ui, sans-serif; }
     .tabular { font-variant-numeric: tabular-nums; }
+
+    /* Chart bar tooltips */
+    .chart-bar-wrapper {
+      position: relative;
+    }
+    .chart-bar-wrapper .chart-tooltip {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      background: white;
+      color: #171717;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+      z-index: 50;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05);
+    }
+    .chart-bar-wrapper .chart-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: white;
+    }
+    .chart-bar-wrapper:hover .chart-tooltip {
+      opacity: 1;
+    }
+    .chart-tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .chart-tooltip-row + .chart-tooltip-row {
+      margin-top: 4px;
+    }
+    .chart-tooltip-label {
+      color: #737373;
+    }
+    .chart-tooltip-value {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Custom Chart.js external tooltip */
+    .chartjs-tooltip {
+      position: absolute;
+      background: white;
+      color: #171717;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 50;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05);
+      transform: translateX(-50%);
+      /* Only transition opacity, not position - keeps it snappy */
+      transition: opacity 0.1s ease-out;
+    }
+    .chartjs-tooltip.active {
+      opacity: 1;
+    }
+    .chartjs-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: white;
+    }
+    .chartjs-tooltip-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #171717;
+    }
+    .chartjs-tooltip-body {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .chartjs-tooltip-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chartjs-tooltip-color {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .chartjs-tooltip-label {
+      color: #737373;
+    }
+    .chartjs-tooltip-value {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      margin-left: auto;
+    }
   </style>
 </head>
 <body class="bg-neutral-50 text-neutral-900 min-h-dvh">
@@ -222,24 +330,24 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
 
         <!-- Weight Trend Chart -->
         <div class="mt-2 sm:mt-3 bg-neutral-50 rounded-lg sm:rounded-xl p-2.5 sm:p-4">
-          <div class="flex items-center justify-between mb-2 sm:mb-3">
+          <div id="profile-weight-stats" class="hidden flex items-center justify-between mb-2 sm:mb-3">
             <div>
               <div class="text-[10px] sm:text-xs text-neutral-500 mb-0.5">Current</div>
               <div class="flex items-baseline gap-1 sm:gap-2">
-                <span id="profile-current-weight" class="text-xl sm:text-2xl font-semibold tabular">180</span>
+                <span id="profile-current-weight" class="text-xl sm:text-2xl font-semibold tabular">—</span>
                 <span class="text-xs sm:text-sm text-neutral-400">lb</span>
-                <span id="profile-weight-change" class="text-xs sm:text-sm font-medium text-neutral-400">—</span>
+                <span id="profile-weight-change" class="text-xs sm:text-sm font-medium text-neutral-400"></span>
               </div>
             </div>
             <div id="profile-weight-trend" class="text-right">
               <div class="text-[10px] sm:text-xs text-neutral-400">to goal</div>
-              <div id="profile-weight-to-goal" class="text-xs sm:text-sm font-medium tabular text-neutral-500">10–15 lb</div>
+              <div id="profile-weight-to-goal" class="text-xs sm:text-sm font-medium tabular text-neutral-500">—</div>
             </div>
           </div>
-          <div id="profile-weight-chart-container" class="h-24 sm:h-28">
+          <div id="profile-weight-chart-container" class="hidden h-24 sm:h-28">
             <canvas id="profile-weight-chart"></canvas>
           </div>
-          <div id="profile-weight-empty" class="hidden text-[10px] sm:text-xs text-neutral-400 text-center py-6 sm:py-8">
+          <div id="profile-weight-empty" class="text-[10px] sm:text-xs text-neutral-400 text-center py-6 sm:py-8">
             No weigh-ins yet.
           </div>
         </div>
@@ -401,6 +509,56 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
     return EXERCISE_MUSCLE_MAP[normalized] || { group: 'other', muscles: ['unknown'] };
   }
 
+  // Trend calculation constants
+  const TREND_LOOKBACK_WEEKS = 8; // Rolling window for trend calculation
+  const TREND_STALE_WEEKS = 4; // Weeks of stable before marking as stale
+  const TREND_THRESHOLD_PERCENT = 3; // % change per week to be considered up/down
+
+  // Linear regression helper - returns normalized slope (% change per data point)
+  function calculateTrendSlope(values) {
+    const n = values.length;
+    if (n < 2) return { slope: 0, isStale: false };
+
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    for (let i = 0; i < n; i++) {
+      sumX += i;
+      sumY += values[i];
+      sumXY += i * values[i];
+      sumX2 += i * i;
+    }
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const mean = sumY / n;
+
+    // Normalized slope as percentage per data point
+    const normalizedSlope = mean > 0 ? (slope / mean) * 100 : 0;
+
+    // Check for staleness - if stable for too long
+    const isStale = Math.abs(normalizedSlope) < TREND_THRESHOLD_PERCENT && n >= TREND_STALE_WEEKS;
+
+    return { slope: normalizedSlope, isStale };
+  }
+
+  // Get trend direction from slope
+  function getTrendFromSlope(slope, isStale) {
+    if (isStale) return 'stale';
+    if (slope > TREND_THRESHOLD_PERCENT) return 'up';
+    if (slope < -TREND_THRESHOLD_PERCENT) return 'down';
+    return 'stable';
+  }
+
+  // Get days within rolling lookback window
+  function getDaysInLookbackWindow(allDays, lookbackWeeks = TREND_LOOKBACK_WEEKS) {
+    if (!allDays.length) return [];
+
+    const sortedDays = [...allDays].sort((a, b) => b.date.localeCompare(a.date)); // Most recent first
+    const mostRecentDate = new Date(sortedDays[0].date + 'T00:00:00');
+    const cutoffDate = new Date(mostRecentDate);
+    cutoffDate.setDate(cutoffDate.getDate() - (lookbackWeeks * 7));
+
+    return allDays.filter(d => new Date(d.date + 'T00:00:00') >= cutoffDate);
+  }
+
   function analyzeWorkouts(days) {
     const workoutDays = days.filter(d => d.workout?.exercises);
     if (!workoutDays.length) return null;
@@ -488,21 +646,26 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
       });
     }
 
-    // Calculate trends for each exercise
+    // Calculate trends for each exercise using linear regression
     for (const stat of Object.values(exerciseStats)) {
       if (stat.history.length >= 2) {
-        const first = stat.history[0];
-        const last = stat.history[stat.history.length - 1];
+        // Get values for regression based on exercise type
+        let values = [];
 
-        if (first.weight && last.weight) {
-          if (last.weight > first.weight) stat.trend = 'up';
-          else if (last.weight < first.weight) stat.trend = 'down';
-        } else if (first.assistWeight !== undefined && last.assistWeight !== undefined) {
-          if (last.assistWeight < first.assistWeight) stat.trend = 'up'; // Less assist = better
-          else if (last.assistWeight > first.assistWeight) stat.trend = 'down';
-        } else if (first.distance && last.distance) {
-          if (last.distance > first.distance) stat.trend = 'up';
-          else if (last.distance < first.distance) stat.trend = 'down';
+        if (stat.history[0].weight !== undefined) {
+          values = stat.history.map(h => h.weight);
+        } else if (stat.history[0].assistWeight !== undefined) {
+          // Invert assist weight so lower = better = higher value for trending
+          const maxAssist = Math.max(...stat.history.map(h => h.assistWeight));
+          values = stat.history.map(h => maxAssist - h.assistWeight);
+        } else if (stat.history[0].distance !== undefined) {
+          values = stat.history.map(h => h.distance);
+        }
+
+        if (values.length >= 2) {
+          const { slope, isStale } = calculateTrendSlope(values);
+          stat.trend = getTrendFromSlope(slope, isStale);
+          stat.trendSlope = slope; // Store for debugging/display
         }
       }
     }
@@ -561,48 +724,73 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
     return muscleVolume;
   }
 
-  function getVolumeAndCardioTrends(days) {
-    // Group by week
-    const weeklyData = {};
-
-    for (const day of days) {
-      const weekKey = day._week !== undefined ? day._week : getISOWeek(day.date);
-      if (!weeklyData[weekKey]) {
-        weeklyData[weekKey] = { volume: 0, cardioCalories: 0, cardioDistance: 0, cardioDuration: 0, workouts: 0 };
-      }
-
-      if (day.workout) {
-        weeklyData[weekKey].workouts++;
-        if (day.workout.volume) {
-          weeklyData[weekKey].volume += day.workout.volume;
+  function getVolumeAndCardioTrends(days, useFullWeekData = false) {
+    // Helper to group days by week and aggregate data
+    function aggregateByWeek(daysToProcess) {
+      const weeklyData = {};
+      for (const day of daysToProcess) {
+        const weekKey = day._week !== undefined ? day._week : getISOWeek(day.date);
+        if (!weeklyData[weekKey]) {
+          weeklyData[weekKey] = { volume: 0, cardioCalories: 0, cardioDistance: 0, cardioDuration: 0, workouts: 0 };
         }
-        if (day.workout.exercises) {
-          for (const ex of day.workout.exercises) {
-            if (ex.calories) weeklyData[weekKey].cardioCalories += ex.calories;
-            if (ex.distance) {
-              weeklyData[weekKey].cardioDistance += ex.distance;
-              if (ex.duration) weeklyData[weekKey].cardioDuration += ex.duration;
+
+        if (day.workout) {
+          weeklyData[weekKey].workouts++;
+          if (day.workout.volume) {
+            weeklyData[weekKey].volume += day.workout.volume;
+          }
+          if (day.workout.exercises) {
+            for (const ex of day.workout.exercises) {
+              if (ex.calories) weeklyData[weekKey].cardioCalories += ex.calories;
+              if (ex.distance) {
+                weeklyData[weekKey].cardioDistance += ex.distance;
+                if (ex.duration) weeklyData[weekKey].cardioDuration += ex.duration;
+              }
             }
           }
         }
       }
+      return weeklyData;
     }
 
-    const weeks = Object.entries(weeklyData).sort((a, b) => a[0] - b[0]);
+    // Identify which weeks are represented in the passed days
+    const weeksInView = new Set();
+    for (const day of days) {
+      const weekKey = day._week !== undefined ? day._week : getISOWeek(day.date);
+      weeksInView.add(weekKey);
+    }
 
-    // Calculate trends
+    // When useFullWeekData is true (month view), pull complete week data from DATA.days
+    // This ensures partial weeks show their full volume/cardio, not sliced data
+    const daysForChart = useFullWeekData
+      ? DATA.days.filter(d => {
+          const weekKey = d._week !== undefined ? d._week : getISOWeek(d.date);
+          return weeksInView.has(weekKey);
+        })
+      : days;
+
+    // Aggregate data for chart display (weeks in current view)
+    const weeklyDataForChart = aggregateByWeek(daysForChart);
+    const weeks = Object.entries(weeklyDataForChart).sort((a, b) => a[0] - b[0]);
+
+    // For trend calculation, use rolling lookback from all data
+    const lookbackDays = getDaysInLookbackWindow(DATA.days, TREND_LOOKBACK_WEEKS);
+    const weeklyDataForTrends = aggregateByWeek(lookbackDays);
+    const trendWeeks = Object.entries(weeklyDataForTrends).sort((a, b) => a[0].localeCompare(b[0]));
+
+    // Calculate trends using linear regression on rolling lookback data
     let volumeTrend = 'stable';
     let cardioTrend = 'stable';
 
-    if (weeks.length >= 2) {
-      const first = weeks[0][1];
-      const last = weeks[weeks.length - 1][1];
+    if (trendWeeks.length >= 2) {
+      const volumeValues = trendWeeks.map(([, d]) => d.volume);
+      const cardioValues = trendWeeks.map(([, d]) => d.cardioDistance);
 
-      if (last.volume > first.volume * 1.05) volumeTrend = 'up';
-      else if (last.volume < first.volume * 0.95) volumeTrend = 'down';
+      const volumeResult = calculateTrendSlope(volumeValues);
+      const cardioResult = calculateTrendSlope(cardioValues);
 
-      if (last.cardioDistance > first.cardioDistance * 1.05) cardioTrend = 'up';
-      else if (last.cardioDistance < first.cardioDistance * 0.95) cardioTrend = 'down';
+      volumeTrend = getTrendFromSlope(volumeResult.slope, volumeResult.isStale);
+      cardioTrend = getTrendFromSlope(cardioResult.slope, cardioResult.isStale);
     }
 
     return { weeks, volumeTrend, cardioTrend };
@@ -614,7 +802,8 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
 
     const { volumeByGroup, exerciseStats, prs, pushPullRatio, upperLowerRatio, totalWorkouts, volumeOverTime } = analysis;
     const detailedMuscles = analyzeDetailedMuscles(days);
-    const trends = getVolumeAndCardioTrends(days);
+    // In month view, use full week data so partial weeks show complete volume/cardio
+    const trends = getVolumeAndCardioTrends(days, view === 'month');
 
     // Calculate total volume for percentages
     const totalVolume = Object.values(volumeByGroup).reduce((a, b) => a + b, 0);
@@ -632,6 +821,7 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
     const trendIcon = (trend) => {
       if (trend === 'up') return '<span class="text-green-500">↑</span>';
       if (trend === 'down') return '<span class="text-red-500">↓</span>';
+      if (trend === 'stale') return '<span class="text-amber-500">⏸</span>';
       return '<span class="text-neutral-400">→</span>';
     };
 
@@ -708,15 +898,15 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
             const volValue = data.volume;
             const volPrev = prevData?.volume || volValue;
             const volProgress = volPrev > 0 ? Math.min((volValue / volPrev) * 100, 150) : 100;
-            const volTrendIcon = trends.volumeTrend === 'up' ? '↑' : trends.volumeTrend === 'down' ? '↓' : '→';
-            const volTrendColor = trends.volumeTrend === 'up' ? 'text-green-500' : trends.volumeTrend === 'down' ? 'text-neutral-400' : 'text-neutral-400';
+            const volTrendIcon = trends.volumeTrend === 'up' ? '↑' : trends.volumeTrend === 'down' ? '↓' : trends.volumeTrend === 'stale' ? '⏸' : '→';
+            const volTrendColor = trends.volumeTrend === 'up' ? 'text-green-500' : trends.volumeTrend === 'down' ? 'text-red-400' : trends.volumeTrend === 'stale' ? 'text-amber-500' : 'text-neutral-400';
 
             // Cardio distance card
             const distValue = data.cardioDistance;
             const distPrev = prevData?.cardioDistance || distValue;
             const distProgress = distPrev > 0 ? Math.min((distValue / distPrev) * 100, 150) : 100;
-            const distTrendIcon = trends.cardioTrend === 'up' ? '↑' : trends.cardioTrend === 'down' ? '↓' : '→';
-            const distTrendColor = trends.cardioTrend === 'up' ? 'text-green-500' : trends.cardioTrend === 'down' ? 'text-neutral-400' : 'text-neutral-400';
+            const distTrendIcon = trends.cardioTrend === 'up' ? '↑' : trends.cardioTrend === 'down' ? '↓' : trends.cardioTrend === 'stale' ? '⏸' : '→';
+            const distTrendColor = trends.cardioTrend === 'up' ? 'text-green-500' : trends.cardioTrend === 'down' ? 'text-red-400' : trends.cardioTrend === 'stale' ? 'text-amber-500' : 'text-neutral-400';
 
             // Cardio duration card
             const durValue = data.cardioDuration;
@@ -781,9 +971,9 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
             <div class="flex items-center justify-between mb-4">
               <h4 class="text-sm font-medium text-neutral-500">Weekly Volume</h4>
               ${trends.weeks.length >= 2 ? `
-              <div class="flex items-center gap-1 text-sm ${trends.volumeTrend === 'up' ? 'text-green-600' : trends.volumeTrend === 'down' ? 'text-red-500' : 'text-neutral-500'}">
+              <div class="flex items-center gap-1 text-sm ${trends.volumeTrend === 'up' ? 'text-green-600' : trends.volumeTrend === 'down' ? 'text-red-500' : trends.volumeTrend === 'stale' ? 'text-amber-500' : 'text-neutral-500'}">
                 ${trendIcon(trends.volumeTrend)}
-                <span>${trends.volumeTrend === 'up' ? 'Increasing' : trends.volumeTrend === 'down' ? 'Decreasing' : 'Stable'}</span>
+                <span>${trends.volumeTrend === 'up' ? 'Increasing' : trends.volumeTrend === 'down' ? 'Decreasing' : trends.volumeTrend === 'stale' ? 'Plateau' : 'Stable'}</span>
               </div>
               ` : ''}
             </div>
@@ -793,9 +983,13 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
                 const pct = maxVol > 0 ? (d.volume / maxVol * 100) : 0;
                 const heightPx = Math.max(Math.round(56 * pct / 100), 4);
                 return `
-                  <div class="flex-1 flex flex-col items-center justify-end gap-1">
+                  <div class="flex-1 flex flex-col items-center justify-end gap-1 chart-bar-wrapper">
+                    <div class="chart-tooltip">
+                      <div class="chart-tooltip-row"><span class="chart-tooltip-label">Volume</span><span class="chart-tooltip-value">${d.volume.toLocaleString()}</span></div>
+                      <div class="chart-tooltip-row"><span class="chart-tooltip-label">Workouts</span><span class="chart-tooltip-value">${d.workouts}</span></div>
+                    </div>
                     <div class="text-[10px] tabular font-medium text-neutral-600">${(d.volume / 1000).toFixed(0)}k</div>
-                    <div class="w-full bg-violet-500 rounded-t-lg" style="height: ${heightPx}px;"></div>
+                    <div class="w-full bg-violet-500 rounded-t-lg cursor-pointer hover:bg-violet-600 transition-colors" style="height: ${heightPx}px;"></div>
                     <span class="text-[10px] text-neutral-400">W${w}</span>
                   </div>
                 `;
@@ -807,9 +1001,9 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
             <div class="flex items-center justify-between mb-4">
               <h4 class="text-sm font-medium text-neutral-500">Cardio</h4>
               ${trends.weeks.length >= 2 ? `
-              <div class="flex items-center gap-1 text-sm ${trends.cardioTrend === 'up' ? 'text-green-600' : trends.cardioTrend === 'down' ? 'text-red-500' : 'text-neutral-500'}">
+              <div class="flex items-center gap-1 text-sm ${trends.cardioTrend === 'up' ? 'text-green-600' : trends.cardioTrend === 'down' ? 'text-red-500' : trends.cardioTrend === 'stale' ? 'text-amber-500' : 'text-neutral-500'}">
                 ${trendIcon(trends.cardioTrend)}
-                <span>${trends.cardioTrend === 'up' ? 'Improving' : trends.cardioTrend === 'down' ? 'Declining' : 'Stable'}</span>
+                <span>${trends.cardioTrend === 'up' ? 'Improving' : trends.cardioTrend === 'down' ? 'Declining' : trends.cardioTrend === 'stale' ? 'Plateau' : 'Stable'}</span>
               </div>
               ` : ''}
             </div>
@@ -818,10 +1012,18 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
                 const maxDist = Math.max(...trends.weeks.map(([,x]) => x.cardioDistance), 0.1);
                 const pct = maxDist > 0 ? (d.cardioDistance / maxDist * 100) : 0;
                 const heightPx = Math.max(Math.round(56 * pct / 100), 4);
+                const pace = d.cardioDuration && d.cardioDistance > 0 ? (d.cardioDuration / d.cardioDistance) : null;
+                const paceStr = pace ? `${Math.floor(pace)}:${String(Math.round((pace % 1) * 60)).padStart(2, '0')}/mi` : '—';
                 return `
-                  <div class="flex-1 flex flex-col items-center justify-end gap-1">
+                  <div class="flex-1 flex flex-col items-center justify-end gap-1 chart-bar-wrapper">
+                    <div class="chart-tooltip">
+                      <div class="chart-tooltip-row"><span class="chart-tooltip-label">Distance</span><span class="chart-tooltip-value">${d.cardioDistance.toFixed(2)} mi</span></div>
+                      <div class="chart-tooltip-row"><span class="chart-tooltip-label">Duration</span><span class="chart-tooltip-value">${d.cardioDuration} min</span></div>
+                      <div class="chart-tooltip-row"><span class="chart-tooltip-label">Pace</span><span class="chart-tooltip-value">${paceStr}</span></div>
+                      <div class="chart-tooltip-row"><span class="chart-tooltip-label">Calories</span><span class="chart-tooltip-value">${d.cardioCalories.toLocaleString()}</span></div>
+                    </div>
                     <div class="text-[10px] tabular font-medium text-neutral-600">${d.cardioDistance.toFixed(1)}m</div>
-                    <div class="w-full bg-sky-500 rounded-t-lg" style="height: ${heightPx}px;"></div>
+                    <div class="w-full bg-sky-500 rounded-t-lg cursor-pointer hover:bg-sky-600 transition-colors" style="height: ${heightPx}px;"></div>
                     <span class="text-[10px] text-neutral-400">W${w}</span>
                   </div>
                 `;
@@ -1903,6 +2105,83 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
     activeCharts = [];
   }
 
+  // External tooltip handler for Chart.js - positions tooltip above chart like workout tooltips
+  function createExternalTooltip(context) {
+    const { chart, tooltip } = context;
+
+    // Get or create tooltip element
+    let tooltipEl = chart.canvas.parentNode.querySelector('.chartjs-tooltip');
+    if (!tooltipEl) {
+      tooltipEl = document.createElement('div');
+      tooltipEl.className = 'chartjs-tooltip';
+      chart.canvas.parentNode.style.position = 'relative';
+      chart.canvas.parentNode.appendChild(tooltipEl);
+    }
+
+    // Hide if no tooltip
+    if (tooltip.opacity === 0) {
+      tooltipEl.classList.remove('active');
+      return;
+    }
+
+    // Build tooltip content
+    let html = '';
+    if (tooltip.title && tooltip.title.length) {
+      html += `<div class="chartjs-tooltip-title">${tooltip.title[0]}</div>`;
+    }
+
+    if (tooltip.body) {
+      html += '<div class="chartjs-tooltip-body">';
+      tooltip.body.forEach((bodyItem, i) => {
+        const colors = tooltip.labelColors?.[i];
+        const text = bodyItem.lines[0] || '';
+        // Use borderColor as fallback for line charts (backgroundColor may be transparent)
+        const color = colors?.borderColor || colors?.backgroundColor || '#737373';
+        html += `
+          <div class="chartjs-tooltip-item">
+            <span class="chartjs-tooltip-color" style="background: ${color};"></span>
+            <span>${text}</span>
+          </div>
+        `;
+      });
+      html += '</div>';
+    }
+
+    tooltipEl.innerHTML = html;
+
+    // Position tooltip above the highest (topmost) data point at this x-position
+    const tooltipHeight = tooltipEl.offsetHeight;
+
+    // Find the topmost point (minimum y value since canvas y increases downward)
+    let topY = tooltip.caretY;
+    let clearance = 8;
+    if (tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+      for (const point of tooltip.dataPoints) {
+        const el = point.element;
+        // For bar charts, use the top of the bar (min of y and base)
+        // For line/point charts, use the point's y position
+        let pointY;
+        if (el && el.base !== undefined) {
+          // Bar chart - get the top of the bar
+          pointY = Math.min(el.y, el.base);
+        } else {
+          pointY = el?.y ?? point.y ?? topY;
+        }
+        if (pointY < topY) topY = pointY;
+
+        // Get clearance based on element type
+        const radius = el?.options?.hoverRadius || el?.options?.borderWidth || 6;
+        if (radius > clearance) clearance = radius;
+      }
+    }
+
+    const padding = 12; // gap between element and tooltip caret
+
+    tooltipEl.style.left = tooltip.caretX + 'px';
+    tooltipEl.style.top = (topY - tooltipHeight - clearance - padding) + 'px';
+    tooltipEl.classList.add('active');
+  }
+
   function renderCharts(days, containerId) {
     const container = document.getElementById(containerId);
     if (!container || !days.length) return;
@@ -1922,10 +2201,8 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          padding: 12,
-          titleFont: { size: 13 },
-          bodyFont: { size: 12 },
+          enabled: false,
+          external: createExternalTooltip,
         }
       },
       scales: {
@@ -1956,6 +2233,9 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
               tension: 0.3,
               fill: false,
               pointRadius: 3,
+              pointHoverRadius: 6,
+              pointHoverBorderWidth: 2,
+              pointHoverBackgroundColor: '#fff',
             },
             {
               label: 'Protein',
@@ -1965,6 +2245,9 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
               tension: 0.3,
               fill: false,
               pointRadius: 3,
+              pointHoverRadius: 6,
+              pointHoverBorderWidth: 2,
+              pointHoverBackgroundColor: '#fff',
             },
             {
               label: 'Carbs',
@@ -1974,6 +2257,9 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
               tension: 0.3,
               fill: false,
               pointRadius: 3,
+              pointHoverRadius: 6,
+              pointHoverBorderWidth: 2,
+              pointHoverBackgroundColor: '#fff',
             },
             {
               label: 'Fat',
@@ -1983,6 +2269,9 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
               tension: 0.3,
               fill: false,
               pointRadius: 3,
+              pointHoverRadius: 6,
+              pointHoverBorderWidth: 2,
+              pointHoverBackgroundColor: '#fff',
             }
           ]
         },
@@ -2026,10 +2315,14 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
             backgroundColor: sortedDays.map(d =>
               (d._extra?.deficit ?? 0) < 0 ? '#22c55e80' : '#ef444480'
             ),
+            hoverBackgroundColor: sortedDays.map(d =>
+              (d._extra?.deficit ?? 0) < 0 ? '#22c55e' : '#ef4444'
+            ),
             borderColor: sortedDays.map(d =>
               (d._extra?.deficit ?? 0) < 0 ? '#22c55e' : '#ef4444'
             ),
             borderWidth: 1,
+            hoverBorderWidth: 2,
             borderRadius: 4,
           }]
         },
@@ -2073,6 +2366,9 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
               tension: 0.3,
               fill: true,
               pointRadius: 4,
+              pointHoverRadius: 7,
+              pointHoverBorderWidth: 2,
+              pointHoverBackgroundColor: '#fff',
               pointBackgroundColor: sortedDays.map(d =>
                 d.totals.protein >= minTarget ? '#22c55e' : '#ef4444'
               ),
@@ -2120,20 +2416,8 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#fff',
-          titleColor: '#171717',
-          bodyColor: '#525252',
-          borderColor: '#e5e5e5',
-          borderWidth: 1,
-          padding: { top: 10, bottom: 10, left: 14, right: 14 },
-          titleFont: { size: 13, weight: '600' },
-          bodyFont: { size: 13 },
-          cornerRadius: 12,
-          displayColors: true,
-          boxWidth: 10,
-          boxHeight: 10,
-          boxPadding: 6,
-          usePointStyle: true,
+          enabled: false,
+          external: createExternalTooltip,
           filter: (item) => !item.dataset.label?.includes('Zone'),
           callbacks: {
             title: (items) => {
@@ -2232,27 +2516,14 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
             legend: { display: false },
             tooltip: {
               ...appleOptions.plugins.tooltip,
-              usePointStyle: false,
-              boxWidth: 20,
-              boxHeight: 3,
               callbacks: {
                 ...appleOptions.plugins.tooltip.callbacks,
                 label: (ctx) => {
                   const label = ctx.dataset.label;
                   if (label === 'Calories ÷10') {
-                    return `Calories  ${Math.round(ctx.raw * 10)}`;
+                    return `Calories: ${Math.round(ctx.raw * 10)}`;
                   }
-                  return `${label}  ${Math.round(ctx.raw)}g`;
-                },
-                labelColor: (ctx) => {
-                  const color = ctx.dataset.borderColor;
-                  return {
-                    borderColor: color,
-                    backgroundColor: color,
-                    borderWidth: 2,
-                    borderDash: ctx.dataset.label === 'Calories ÷10' ? [3, 2] : [],
-                    borderRadius: 2
-                  };
+                  return `${label}: ${Math.round(ctx.raw)}g`;
                 }
               }
             }
@@ -2285,6 +2556,7 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
               label: 'Deficit',
               data: sortedDays.map(d => d._extra?.deficit ?? 0),
               backgroundColor: sortedDays.map(d => (d._extra?.deficit ?? 0) < 0 ? '#22c55e' : '#ef4444'),
+              hoverBackgroundColor: sortedDays.map(d => (d._extra?.deficit ?? 0) < 0 ? '#16a34a' : '#dc2626'),
               borderRadius: 100,
               borderSkipped: false,
               barPercentage: 0.5,
@@ -2298,7 +2570,6 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
             ...appleOptions.plugins,
             tooltip: {
               ...appleOptions.plugins.tooltip,
-              displayColors: false,
               callbacks: {
                 ...appleOptions.plugins.tooltip.callbacks,
                 label: (ctx) => {
@@ -2577,33 +2848,9 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
     // Weight history and current weight
     const weightHistory = p.weightHistory || [];
     const startingWeight = p.startingWeight || p.weight || 180;
-    const currentWeight = weightHistory.length > 0
-      ? weightHistory[weightHistory.length - 1].weight
-      : startingWeight;
 
-    document.getElementById('profile-current-weight').textContent = currentWeight;
-
-    // Weight change from start
-    const weightChange = currentWeight - startingWeight;
-    const changeEl = document.getElementById('profile-weight-change');
-    if (weightChange !== 0) {
-      const sign = weightChange > 0 ? '+' : '';
-      const color = weightChange < 0 ? 'text-green-600' : 'text-red-500';
-      changeEl.textContent = `${sign}${weightChange.toFixed(1)} lb`;
-      changeEl.className = `text-sm font-medium ${color}`;
-    } else {
-      changeEl.textContent = '—';
-      changeEl.className = 'text-sm font-medium text-neutral-400';
-    }
-
-    // Weight to goal
-    const midTarget = (targetWeight[0] + targetWeight[1]) / 2;
-    const toGoal = currentWeight - midTarget;
-    document.getElementById('profile-weight-to-goal').textContent = toGoal > 0
-      ? `${toGoal.toFixed(0)} lb`
-      : 'At goal!';
-
-    // Weight chart
+    // Weight chart elements
+    const weightStatsEl = document.getElementById('profile-weight-stats');
     const chartContainer = document.getElementById('profile-weight-chart-container');
     const chartCanvas = document.getElementById('profile-weight-chart');
     const emptyEl = document.getElementById('profile-weight-empty');
@@ -2615,8 +2862,33 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
     }
 
     if (weightHistory.length > 0) {
+      // Show weight stats and chart
+      weightStatsEl.classList.remove('hidden');
       chartContainer.classList.remove('hidden');
       emptyEl.classList.add('hidden');
+
+      const currentWeight = weightHistory[weightHistory.length - 1].weight;
+      document.getElementById('profile-current-weight').textContent = currentWeight;
+
+      // Weight change from start
+      const weightChange = currentWeight - startingWeight;
+      const changeEl = document.getElementById('profile-weight-change');
+      if (weightChange !== 0) {
+        const sign = weightChange > 0 ? '+' : '';
+        const color = weightChange < 0 ? 'text-green-600' : 'text-red-500';
+        changeEl.textContent = `${sign}${weightChange.toFixed(1)} lb`;
+        changeEl.className = `text-xs sm:text-sm font-medium ${color}`;
+      } else {
+        changeEl.textContent = '—';
+        changeEl.className = 'text-xs sm:text-sm font-medium text-neutral-400';
+      }
+
+      // Weight to goal
+      const midTarget = (targetWeight[0] + targetWeight[1]) / 2;
+      const toGoal = currentWeight - midTarget;
+      document.getElementById('profile-weight-to-goal').textContent = toGoal > 0
+        ? `${toGoal.toFixed(0)} lb`
+        : 'At goal!';
 
       const weights = weightHistory.map(w => w.weight);
       const labels = weightHistory.map(w => {
@@ -2660,16 +2932,8 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
           plugins: {
             legend: { display: false },
             tooltip: {
-              backgroundColor: '#fff',
-              titleColor: '#171717',
-              bodyColor: '#525252',
-              borderColor: '#e5e5e5',
-              borderWidth: 1,
-              padding: 10,
-              titleFont: { size: 12, weight: '600' },
-              bodyFont: { size: 12 },
-              cornerRadius: 8,
-              displayColors: false,
+              enabled: false,
+              external: createExternalTooltip,
               callbacks: {
                 label: (ctx) => ctx.datasetIndex === 0 ? ctx.raw + ' lb' : 'Target: ' + ctx.raw + ' lb'
               }
@@ -2686,6 +2950,8 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
         }
       });
     } else {
+      // No weight data - show empty state
+      weightStatsEl.classList.add('hidden');
       chartContainer.classList.add('hidden');
       emptyEl.classList.remove('hidden');
     }

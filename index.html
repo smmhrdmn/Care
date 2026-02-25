@@ -559,6 +559,39 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
     return allDays.filter(d => new Date(d.date + 'T00:00:00') >= cutoffDate);
   }
 
+  // Helpers for exercises with per-set arrays (e.g. weight: [110, 110, 120])
+  function calcExerciseVolume(ex) {
+    if (ex.weight && ex.reps) {
+      if (Array.isArray(ex.weight) || Array.isArray(ex.reps)) {
+        const sets = ex.sets || Math.max(
+          Array.isArray(ex.weight) ? ex.weight.length : 1,
+          Array.isArray(ex.reps) ? ex.reps.length : 1
+        );
+        const weights = Array.isArray(ex.weight) ? ex.weight : Array(sets).fill(ex.weight);
+        const reps = Array.isArray(ex.reps) ? ex.reps : Array(sets).fill(ex.reps);
+        return weights.reduce((sum, w, i) => sum + w * (reps[i] || 0), 0);
+      }
+      return ex.weight * ex.reps * (ex.sets || 1);
+    }
+    if (ex.assistWeight !== undefined && ex.reps) {
+      if (Array.isArray(ex.assistWeight) || Array.isArray(ex.reps)) {
+        const sets = ex.sets || Math.max(
+          Array.isArray(ex.assistWeight) ? ex.assistWeight.length : 1,
+          Array.isArray(ex.reps) ? ex.reps.length : 1
+        );
+        const assists = Array.isArray(ex.assistWeight) ? ex.assistWeight : Array(sets).fill(ex.assistWeight);
+        const reps = Array.isArray(ex.reps) ? ex.reps : Array(sets).fill(ex.reps);
+        return assists.reduce((sum, a, i) => sum + (180 - a) * (reps[i] || 0), 0);
+      }
+      return (180 - ex.assistWeight) * ex.reps * (ex.sets || 1);
+    }
+    if (ex.calories) return ex.calories;
+    if (ex.duration && ex.sets) return ex.duration * ex.sets * 10;
+    return 0;
+  }
+  function exMax(val) { return Array.isArray(val) ? Math.max(...val) : val; }
+  function exMin(val) { return Array.isArray(val) ? Math.min(...val) : val; }
+
   function analyzeWorkouts(days) {
     const workoutDays = days.filter(d => d.workout?.exercises);
     if (!workoutDays.length) return null;
@@ -576,17 +609,7 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
         const { group } = getExerciseMuscleGroup(ex.name);
 
         // Calculate volume (weight × reps × sets) or cardio calories
-        let volume = 0;
-        if (ex.weight && ex.reps && ex.sets) {
-          volume = ex.weight * ex.reps * ex.sets;
-        } else if (ex.assistWeight && ex.reps && ex.sets) {
-          // For assisted exercises, use a proxy (bodyweight - assist)
-          volume = (180 - ex.assistWeight) * ex.reps * ex.sets;
-        } else if (ex.calories) {
-          volume = ex.calories; // Cardio uses calories as "volume"
-        } else if (ex.duration && ex.sets) {
-          volume = ex.duration * ex.sets * 10; // Core exercises
-        }
+        let volume = calcExerciseVolume(ex);
 
         volumeByGroup[group] = (volumeByGroup[group] || 0) + volume;
         dayGroupVolume[group] = (dayGroupVolume[group] || 0) + volume;
@@ -609,16 +632,18 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
         const entry = { date: day.date, pr: ex.pr };
 
         if (ex.weight) {
-          entry.weight = ex.weight;
-          entry.reps = ex.reps;
-          if (!stat.bestWeight || ex.weight > stat.bestWeight) {
-            stat.bestWeight = ex.weight;
+          const maxW = exMax(ex.weight);
+          entry.weight = maxW;
+          entry.reps = Array.isArray(ex.reps) ? Math.max(...ex.reps) : ex.reps;
+          if (!stat.bestWeight || maxW > stat.bestWeight) {
+            stat.bestWeight = maxW;
           }
         } else if (ex.assistWeight !== undefined) {
-          entry.assistWeight = ex.assistWeight;
-          entry.reps = ex.reps;
-          if (!stat.bestWeight || ex.assistWeight < stat.bestWeight) {
-            stat.bestWeight = ex.assistWeight; // Lower assist = stronger
+          const minA = exMin(ex.assistWeight);
+          entry.assistWeight = minA;
+          entry.reps = Array.isArray(ex.reps) ? Math.max(...ex.reps) : ex.reps;
+          if (!stat.bestWeight || minA < stat.bestWeight) {
+            stat.bestWeight = minA; // Lower assist = stronger
           }
         } else if (ex.distance) {
           entry.distance = ex.distance;
@@ -634,7 +659,7 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
           prs.push({
             name: ex.name,
             date: day.date,
-            value: ex.weight ? `${ex.weight}lb` : ex.assistWeight !== undefined ? `-${ex.assistWeight}lb assist` : ex.distance ? `${ex.distance}mi` : ''
+            value: ex.weight ? `${exMax(ex.weight)}lb` : ex.assistWeight !== undefined ? `-${exMin(ex.assistWeight)}lb assist` : ex.distance ? `${ex.distance}mi` : ''
           });
         }
       }
@@ -702,16 +727,7 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
       for (const ex of day.workout.exercises) {
         const { muscles } = getExerciseMuscleGroup(ex.name);
 
-        let volume = 0;
-        if (ex.weight && ex.reps && ex.sets) {
-          volume = ex.weight * ex.reps * ex.sets;
-        } else if (ex.assistWeight !== undefined && ex.reps && ex.sets) {
-          volume = (180 - ex.assistWeight) * ex.reps * ex.sets;
-        } else if (ex.calories) {
-          volume = ex.calories;
-        } else if (ex.duration && ex.sets) {
-          volume = ex.duration * ex.sets * 10;
-        }
+        let volume = calcExerciseVolume(ex);
 
         // Split volume across muscles
         const volumePerMuscle = volume / muscles.length;
@@ -803,7 +819,7 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
     const { volumeByGroup, exerciseStats, prs, pushPullRatio, upperLowerRatio, totalWorkouts, volumeOverTime } = analysis;
     const detailedMuscles = analyzeDetailedMuscles(days);
     // In month view, use full week data so partial weeks show complete volume/cardio
-    const trends = getVolumeAndCardioTrends(days, view === 'month');
+    const trends = getVolumeAndCardioTrends(days, view === 'month' || view === 'all');
 
     // Calculate total volume for percentages
     const totalVolume = Object.values(volumeByGroup).reduce((a, b) => a + b, 0);
@@ -1327,7 +1343,9 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
     currentView = view;
 
     // Initialize selection if needed
-    if (view === 'month' && !selectedMonth && DATA.days.length) {
+    if (view === 'all') {
+      // No selection needed - uses all data
+    } else if (view === 'month' && !selectedMonth && DATA.days.length) {
       selectedMonth = getMonth(DATA.days[DATA.days.length - 1].date);
     }
     if (view === 'week') {
@@ -1399,23 +1417,32 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
     let desktopHTML = '';
     let mobileHTML = '';
 
-    if (currentView === 'day') {
+    const viewBtns = `${viewBtn('all', 'A')}${viewBtn('month', 'M')}${viewBtn('week', 'W')}${viewBtn('day', 'D')}`;
+    const mViewBtns = `${mViewBtn('all', 'A')}${mViewBtn('month', 'M')}${mViewBtn('week', 'W')}${mViewBtn('day', 'D')}`;
+
+    if (currentView === 'all') {
+      const firstDate = DATA.days[0]?.date;
+      const lastDate = DATA.days[DATA.days.length - 1]?.date;
+      const label = firstDate && lastDate ? `${formatDate(firstDate)} – ${formatDate(lastDate)}` : 'All';
+      desktopHTML = `<div class="flex items-center bg-neutral-100 rounded-lg p-1"><div class="flex">${viewBtns}</div><div class="w-px h-4 bg-neutral-300 mx-2"></div><span class="px-2 text-sm font-medium">${label}</span></div>`;
+      mobileHTML = `<div class="flex-1"></div><div class="flex items-center">${mViewBtns}</div><span class="min-w-11 h-11 flex items-center justify-center text-sm font-semibold">All</span><div class="flex-1"></div>`;
+    } else if (currentView === 'day') {
       const day = DATA.days[dayIndex];
       const label = day ? formatDate(day.date) : 'No data';
       const shortLabel = day ? ((new Date(day.date + 'T00:00:00').getMonth() + 1) + '/' + new Date(day.date + 'T00:00:00').getDate()) : '—';
-      desktopHTML = `<div class="flex items-center bg-neutral-100 rounded-lg p-1"><div class="flex">${viewBtn('month', 'M')}${viewBtn('week', 'W')}${viewBtn('day', 'D')}</div><div class="w-px h-4 bg-neutral-300 mx-2"></div>${arrowBtn('prev', 'navDay(-1)', dayIndex <= 0)}<span class="px-2 text-sm font-medium">${label}</span>${arrowBtn('next', 'navDay(1)', dayIndex >= DATA.days.length - 1)}</div>`;
-      mobileHTML = `${mArrowBtn('prev', 'navDay(-1)', dayIndex <= 0)}<div class="flex items-center">${mViewBtn('month', 'M')}${mViewBtn('week', 'W')}${mViewBtn('day', 'D')}</div><span class="min-w-11 h-11 flex items-center justify-center text-sm font-semibold tabular">${shortLabel}</span>${mArrowBtn('next', 'navDay(1)', dayIndex >= DATA.days.length - 1)}`;
+      desktopHTML = `<div class="flex items-center bg-neutral-100 rounded-lg p-1"><div class="flex">${viewBtns}</div><div class="w-px h-4 bg-neutral-300 mx-2"></div>${arrowBtn('prev', 'navDay(-1)', dayIndex <= 0)}<span class="px-2 text-sm font-medium">${label}</span>${arrowBtn('next', 'navDay(1)', dayIndex >= DATA.days.length - 1)}</div>`;
+      mobileHTML = `${mArrowBtn('prev', 'navDay(-1)', dayIndex <= 0)}<div class="flex items-center">${mViewBtns}</div><span class="min-w-11 h-11 flex items-center justify-center text-sm font-semibold tabular">${shortLabel}</span>${mArrowBtn('next', 'navDay(1)', dayIndex >= DATA.days.length - 1)}`;
     } else if (currentView === 'week') {
       const weekData = weeks[weekIndex]?.[1];
       const label = weekData?.weekNumber !== null ? `Week ${weekData?.weekNumber}` : formatWeek(selectedWeek);
       const shortLabel = weekData?.weekNumber !== null ? `W${weekData?.weekNumber}` : 'Wk';
-      desktopHTML = `<div class="flex items-center bg-neutral-100 rounded-lg p-1"><div class="flex">${viewBtn('month', 'M')}${viewBtn('week', 'W')}${viewBtn('day', 'D')}</div><div class="w-px h-4 bg-neutral-300 mx-2"></div>${arrowBtn('prev', 'navWeek(-1)', weekIndex <= 0)}<span class="px-2 text-sm font-medium">${label}</span>${arrowBtn('next', 'navWeek(1)', weekIndex >= weeks.length - 1)}</div>`;
-      mobileHTML = `${mArrowBtn('prev', 'navWeek(-1)', weekIndex <= 0)}<div class="flex items-center">${mViewBtn('month', 'M')}${mViewBtn('week', 'W')}${mViewBtn('day', 'D')}</div><span class="min-w-11 h-11 flex items-center justify-center text-sm font-semibold">${shortLabel}</span>${mArrowBtn('next', 'navWeek(1)', weekIndex >= weeks.length - 1)}`;
+      desktopHTML = `<div class="flex items-center bg-neutral-100 rounded-lg p-1"><div class="flex">${viewBtns}</div><div class="w-px h-4 bg-neutral-300 mx-2"></div>${arrowBtn('prev', 'navWeek(-1)', weekIndex <= 0)}<span class="px-2 text-sm font-medium">${label}</span>${arrowBtn('next', 'navWeek(1)', weekIndex >= weeks.length - 1)}</div>`;
+      mobileHTML = `${mArrowBtn('prev', 'navWeek(-1)', weekIndex <= 0)}<div class="flex items-center">${mViewBtns}</div><span class="min-w-11 h-11 flex items-center justify-center text-sm font-semibold">${shortLabel}</span>${mArrowBtn('next', 'navWeek(1)', weekIndex >= weeks.length - 1)}`;
     } else if (currentView === 'month') {
       const label = selectedMonth ? formatMonth(selectedMonth) : 'All';
       const shortLabel = selectedMonth ? label.slice(0, 3) : 'All';
-      desktopHTML = `<div class="flex items-center bg-neutral-100 rounded-lg p-1"><div class="flex">${viewBtn('month', 'M')}${viewBtn('week', 'W')}${viewBtn('day', 'D')}</div><div class="w-px h-4 bg-neutral-300 mx-2"></div>${arrowBtn('prev', 'navMonth(-1)', monthIndex <= 0)}<span class="px-2 text-sm font-medium">${label}</span>${arrowBtn('next', 'navMonth(1)', monthIndex >= months.length - 1)}</div>`;
-      mobileHTML = `${mArrowBtn('prev', 'navMonth(-1)', monthIndex <= 0)}<div class="flex items-center">${mViewBtn('month', 'M')}${mViewBtn('week', 'W')}${mViewBtn('day', 'D')}</div><span class="min-w-11 h-11 flex items-center justify-center text-sm font-semibold">${shortLabel}</span>${mArrowBtn('next', 'navMonth(1)', monthIndex >= months.length - 1)}`;
+      desktopHTML = `<div class="flex items-center bg-neutral-100 rounded-lg p-1"><div class="flex">${viewBtns}</div><div class="w-px h-4 bg-neutral-300 mx-2"></div>${arrowBtn('prev', 'navMonth(-1)', monthIndex <= 0)}<span class="px-2 text-sm font-medium">${label}</span>${arrowBtn('next', 'navMonth(1)', monthIndex >= months.length - 1)}</div>`;
+      mobileHTML = `${mArrowBtn('prev', 'navMonth(-1)', monthIndex <= 0)}<div class="flex items-center">${mViewBtns}</div><span class="min-w-11 h-11 flex items-center justify-center text-sm font-semibold">${shortLabel}</span>${mArrowBtn('next', 'navMonth(1)', monthIndex >= months.length - 1)}`;
     }
 
     nav.innerHTML = desktopHTML;
@@ -1596,11 +1623,19 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
 
     // Assisted exercises (negative weight)
     if (ex.assistWeight !== undefined) {
+      if (Array.isArray(ex.assistWeight)) {
+        const reps = Array.isArray(ex.reps) ? ex.reps : Array(ex.sets || ex.assistWeight.length).fill(ex.reps);
+        return ex.assistWeight.map((w, i) => `-${w}×${reps[i] || ex.reps}`).join(', ') + ' lb';
+      }
       return `-${ex.assistWeight} lb × ${ex.reps} × ${ex.sets}`;
     }
 
     // Standard weight training
     if (ex.weight !== undefined) {
+      if (Array.isArray(ex.weight)) {
+        const reps = Array.isArray(ex.reps) ? ex.reps : Array(ex.sets || ex.weight.length).fill(ex.reps);
+        return ex.weight.map((w, i) => `${w}×${reps[i] || ex.reps}`).join(', ') + ' lb';
+      }
       return `${ex.weight} lb × ${ex.reps} × ${ex.sets}`;
     }
 
@@ -1743,6 +1778,8 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
       renderWeekView(dashboard);
     } else if (currentView === 'month') {
       renderMonthView(dashboard);
+    } else if (currentView === 'all') {
+      renderAllView(dashboard);
     }
   }
 
@@ -1945,6 +1982,135 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
       ${days.some(d => d.workout?.exercises) ? `
         <div style="margin-top: 5rem;">
           ${renderWorkoutAnalysis(days, 'week')}
+        </div>
+      ` : ''}
+    `;
+
+    // Render charts after DOM update
+    if (days.length >= 3) {
+      setTimeout(() => renderChartsCompact(days), 0);
+    }
+  }
+
+  function renderAllView(dashboard) {
+    const days = DATA.days;
+
+    if (!days.length) {
+      dashboard.innerHTML = `
+        <div class="text-center py-20 text-neutral-400">
+          <p class="text-base mb-3">No data yet</p>
+          <button onclick="openModal()" class="text-sm text-neutral-900 underline underline-offset-2 hover:no-underline">
+            Import your data
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    const avg = calculateAverages(days);
+    const workoutStats = getWorkoutStats(days);
+    const macros = ['cal', 'protein', 'carbs', 'fat'];
+    const weeks = getWeeks();
+    const months = getMonths();
+
+    // Date range
+    const firstDate = days[0].date;
+    const lastDate = days[days.length - 1].date;
+    const daySpan = Math.round((new Date(lastDate) - new Date(firstDate)) / (1000 * 60 * 60 * 24)) + 1;
+
+    dashboard.innerHTML = `
+      <!-- All Header + Stats Row -->
+      <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end justify-between gap-3 sm:gap-4 mb-5 sm:mb-6">
+        <div>
+          <h2 class="text-lg sm:text-xl font-semibold">All Weeks</h2>
+          <p class="text-xs sm:text-sm text-neutral-500">${days.length} days tracked over ${daySpan} days (${weeks.length} weeks)</p>
+        </div>
+        <div class="flex flex-wrap gap-3 sm:gap-6">
+          ${avg.totalDeficit !== null ? `
+            <div class="text-left sm:text-right">
+              <div class="text-xs sm:text-sm text-neutral-400">Total Fat Loss</div>
+              <div class="text-base sm:text-lg font-semibold tabular text-green-600">${(avg.totalDeficit / -3500).toFixed(1)} lb</div>
+            </div>
+          ` : ''}
+          ${avg.deficit !== null ? `
+            <div class="text-left sm:text-right">
+              <div class="text-xs sm:text-sm text-neutral-400">Avg Deficit</div>
+              <div class="text-base sm:text-lg font-semibold tabular ${avg.deficit < 0 ? 'text-green-600' : 'text-red-600'}">${Math.round(avg.deficit)}/d</div>
+            </div>
+          ` : ''}
+          ${avg.sugar !== null ? `
+            <div class="text-left sm:text-right">
+              <div class="text-xs sm:text-sm text-neutral-400">Avg Sugar</div>
+              <div class="text-base sm:text-lg font-semibold tabular ${avg.sugar <= 50 ? 'text-green-600' : 'text-red-600'}">${Math.round(avg.sugar)}g</div>
+            </div>
+          ` : ''}
+          <div class="text-left sm:text-right">
+            <div class="text-xs sm:text-sm text-neutral-400">Workouts</div>
+            <div class="text-base sm:text-lg font-semibold tabular">${workoutStats.count}${workoutStats.prs.length ? ` <span class="text-green-600">(${workoutStats.prs.length} PR)</span>` : ''}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Macros Row -->
+      <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        ${macros.map(key => renderCompactMacroCard(key, avg[key], DATA.targets[key])).join('')}
+      </section>
+
+      <!-- Two Column Layout: Charts + Weeks Breakdown -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Charts Column -->
+        <div class="space-y-6">
+          ${days.length >= 3 ? `
+            <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 p-3 sm:p-5">
+              <h4 class="text-sm font-medium text-neutral-500 mb-5">Nutrition</h4>
+              <div class="h-40">
+                <canvas id="macros-chart"></canvas>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 p-3 sm:p-5">
+              <h4 class="text-sm font-medium text-neutral-500 mb-5">Calorie Deficit</h4>
+              <div class="h-32">
+                <canvas id="deficit-chart"></canvas>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Weeks Breakdown Column -->
+        <div class="bg-white rounded-xl sm:rounded-2xl border border-neutral-200 overflow-hidden">
+          <div class="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-neutral-100">
+            <h3 class="text-xs sm:text-sm font-medium text-neutral-500">Weeks</h3>
+          </div>
+          <div class="divide-y divide-neutral-100 max-h-80 sm:max-h-96 overflow-y-auto">
+          ${weeks.map(([weekKey, weekInfo]) => {
+            const weekDays = weekInfo.days;
+            const weekAvg = calculateAverages(weekDays);
+            const weekWorkouts = getWorkoutStats(weekDays);
+            const weekLabel = weekInfo.weekNumber !== null ? `Week ${weekInfo.weekNumber}` : formatWeek(weekKey);
+            const dateRange = weekInfo.dateRange || '';
+            return `
+              <button onclick="switchView('week'); selectWeek('${weekKey}')" class="w-full px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between hover:bg-neutral-50 text-left gap-2">
+                <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <span class="text-sm sm:text-base font-medium">${weekLabel}</span>
+                  <span class="text-xs sm:text-sm text-neutral-400">${weekDays.length}d, ${weekWorkouts.count}w${weekWorkouts.prs.length ? `, ${weekWorkouts.prs.length}PR` : ''}</span>
+                </div>
+                <div class="flex gap-1.5 sm:gap-3 text-xs sm:text-sm tabular shrink-0">
+                  <span class="text-neutral-500">${Math.round(weekAvg.cal)}</span>
+                  <span class="text-red-600">${Math.round(weekAvg.protein)}p</span>
+                  <span class="text-amber-600 hidden sm:inline">${Math.round(weekAvg.carbs)}c</span>
+                  <span class="text-sky-600 hidden sm:inline">${Math.round(weekAvg.fat)}f</span>
+                </div>
+              </button>
+            `;
+          }).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Workout Analysis -->
+      ${days.some(d => d.workout?.exercises) ? `
+        <div style="margin-top: 5rem;">
+          ${renderWorkoutAnalysis(days, 'all')}
         </div>
       ` : ''}
     `;
@@ -3158,14 +3324,28 @@ if (!DATA.profile) DATA.profile = DEFAULT_PROFILE;
         }
 
       } else if (parsed.days && Array.isArray(parsed.days)) {
-        // Days array format
+        // Days array format (including single-week format with weekNumber)
+        if (parsed.weekNumber !== undefined) {
+          // Single-week format: tag days with week info, treat as weeks format
+          weeksData = [parsed];
+          for (const day of parsed.days) {
+            day._sourceWeek = parsed.weekNumber;
+            day._sourceWeekDateRange = parsed.dateRange;
+          }
+        }
         daysToAdd = parsed.days;
 
         const knownTopLevel = ['days', 'targets'];
         for (const key of Object.keys(parsed)) {
           if (!knownTopLevel.includes(key)) {
-            allUnknownFields.push(`(root).${key}`);
-            extraRootData[key] = parsed[key];
+            if (parsed.weekNumber !== undefined) {
+              // Store week-level extra data keyed by week number (consistent with weeks format)
+              extraRootData[`week_${parsed.weekNumber}`] = extraRootData[`week_${parsed.weekNumber}`] || {};
+              extraRootData[`week_${parsed.weekNumber}`][key] = parsed[key];
+            } else {
+              allUnknownFields.push(`(root).${key}`);
+              extraRootData[key] = parsed[key];
+            }
           }
         }
 
